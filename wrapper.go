@@ -34,7 +34,7 @@ import (
 //     decoder := yaml.NewDecoder(in)
 //     err := decoder.Decode(&w)
 //
-// If you intend to only display the YAML data with unencryted values you should
+// If you intend to only display the YAML data with decryted values you should
 // use `&yaml.Node{}` as `Wrapper.Value` so you can marshal it later with comments.
 //
 type Wrapper struct {
@@ -70,7 +70,41 @@ func (w Wrapper) resolve(node *yaml.Node) (*yaml.Node, error) {
 		}
 	}
 
-	if node.Tag != YAMLTag {
+	var notag bool
+	var style yaml.Style
+
+	switch {
+	case node.Tag == YAMLTag:
+	case strings.HasPrefix(node.Tag, YAMLTag+":"):
+		attrStr := node.Tag[12:]
+		attrs := strings.Split(attrStr, ",")
+
+		for _, attr := range attrs {
+			lower := strings.ToLower(attr)
+			switch lower {
+			case "doublequoted", "singlequoted", "literal", "folded", "flow":
+				if style != 0 {
+					return nil, fmt.Errorf("Can't use more than one style attribute: %s", attrStr)
+				}
+				switch lower {
+				case "doublequoted":
+					style = yaml.DoubleQuotedStyle
+				case "singlequoted":
+					style = yaml.SingleQuotedStyle
+				case "literal":
+					style = yaml.LiteralStyle
+				case "folded":
+					style = yaml.FoldedStyle
+				case "flow":
+					style = yaml.FlowStyle
+				}
+			case "notag":
+				notag = true
+			default:
+				return nil, fmt.Errorf("Unknown attribute: %s", attrStr)
+			}
+		}
+	default:
 		return node, nil
 	}
 
@@ -104,7 +138,20 @@ func (w Wrapper) resolve(node *yaml.Node) (*yaml.Node, error) {
 
 	tempTag := node.Tag
 	node.SetString(buf.String())
-	node.Tag = tempTag
+
+	if !notag {
+		node.Tag = tempTag
+	}
+
+	if style == 0 {
+		if strings.Contains(node.Value, "\n") {
+			node.Style = yaml.LiteralStyle
+		} else {
+			node.Style = yaml.FlowStyle
+		}
+	} else {
+		node.Style = style
+	}
 
 	return node, nil
 }

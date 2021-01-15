@@ -3,6 +3,7 @@ package age_test
 import (
 	"bytes"
 	"fmt"
+	"io"
 
 	"filippo.io/age"
 	yaml "gopkg.in/yaml.v3"
@@ -11,9 +12,7 @@ import (
 
 func ExampleWrapper() {
 	yamlString := `
-database_login: "service_1"
-database_host: "db.company.com:5432"
-database_password: !crypto/age |
+password: !crypto/age |
   -----BEGIN AGE ENCRYPTED FILE-----
   YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBvTDRrOUlXRGFYcXkzaVZu
   WXpzZndRIDE4ClZ3YVVHb0lVWlJtblVFazU4TlBkTitCWlg3dUNqd2N6R0hGVUFr
@@ -25,9 +24,7 @@ database_password: !crypto/age |
 	buf := bytes.NewBufferString(yamlString)
 
 	node := struct {
-		DatabaseLogin    string                `yaml:"database_login"`
-		DatabaseHost     string                `yaml:"database_host"`
-		DatabasePassword yamlage.ArmoredString `yaml:"database_password"`
+		Password yamlage.ArmoredString `yaml:"password"`
 	}{}
 
 	id, err := age.NewScryptIdentity("point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue")
@@ -58,16 +55,30 @@ database_password: !crypto/age |
 
 	fmt.Printf("%s", buf.String())
 	// Output:
-	// database_login: service_1
-	// database_host: db.company.com:5432
-	// database_password: !crypto/age MyDatabasePassword
+	// password: !crypto/age MyDatabasePassword
 }
 
 func ExampleWrapper_anonymous() {
 	yamlString := `
-database_login: "service_1"
-database_host: "db.company.com:5432"
-database_password: !crypto/age |
+password: !crypto/age:DoubleQuoted |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBvTDRrOUlXRGFYcXkzaVZu
+  WXpzZndRIDE4ClZ3YVVHb0lVWlJtblVFazU4TlBkTitCWlg3dUNqd2N6R0hGVUFr
+  T2gwb2sKLS0tIGFPYXBybWRUelNKeWkzc1lrVGpXUHJ4dDI4bWFDZEl6OXhpeTNY
+  N0lIVjgKxPtRljkraTILjhf3v0MM5GmKnBwOMqLu2030RWMl6iW7YEYvunx2AMUA
+  grTyTgUElzo=
+  -----END AGE ENCRYPTED FILE-----
+---
+password: !crypto/age:SingleQuoted |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBvTDRrOUlXRGFYcXkzaVZu
+  WXpzZndRIDE4ClZ3YVVHb0lVWlJtblVFazU4TlBkTitCWlg3dUNqd2N6R0hGVUFr
+  T2gwb2sKLS0tIGFPYXBybWRUelNKeWkzc1lrVGpXUHJ4dDI4bWFDZEl6OXhpeTNY
+  N0lIVjgKxPtRljkraTILjhf3v0MM5GmKnBwOMqLu2030RWMl6iW7YEYvunx2AMUA
+  grTyTgUElzo=
+  -----END AGE ENCRYPTED FILE-----
+---
+password: !crypto/age:NoTag |
   -----BEGIN AGE ENCRYPTED FILE-----
   YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBvTDRrOUlXRGFYcXkzaVZu
   WXpzZndRIDE4ClZ3YVVHb0lVWlJtblVFazU4TlBkTitCWlg3dUNqd2N6R0hGVUFr
@@ -91,28 +102,35 @@ database_password: !crypto/age |
 		Identities: []age.Identity{id},
 	}
 
+	output := new(bytes.Buffer)
 	decoder := yaml.NewDecoder(buf)
-	err = decoder.Decode(&w)
-
-	if err != nil {
-		panic(err)
-	}
-
-	buf = bytes.NewBuffer(nil)
-	encoder := yaml.NewEncoder(buf)
+	encoder := yaml.NewEncoder(output)
 	encoder.SetIndent(2)
-	err = encoder.Encode(&node)
 
-	if err != nil {
-		panic(err)
+	for {
+		err = decoder.Decode(&w)
+
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			panic(err)
+		}
+		err = encoder.Encode(&node)
+
+		if err != nil {
+			panic(err)
+		}
+
 	}
 
-	fmt.Printf("%s", buf.String())
+	fmt.Printf("%s", output.String())
+
 	// Output:
-	// database_login: "service_1"
-	// database_host: "db.company.com:5432"
-	// database_password: !crypto/age |-
-	//   MyDatabasePassword
+	// password: !crypto/age:DoubleQuoted "MyDatabasePassword"
+	// ---
+	// password: !crypto/age:SingleQuoted 'MyDatabasePassword'
+	// ---
+	// password: MyDatabasePassword
 }
 
 func ExampleArmoredString_encode() {
@@ -123,13 +141,9 @@ func ExampleArmoredString_encode() {
 	}
 
 	node := struct {
-		DatabaseLogin    string                `yaml:"database_login"`
-		DatabaseHost     string                `yaml:"database_host"`
-		DatabasePassword yamlage.ArmoredString `yaml:"database_password"`
+		Password yamlage.ArmoredString `yaml:"password"`
 	}{
-		DatabaseLogin: "service_1",
-		DatabaseHost:  "db.company.com:5432",
-		DatabasePassword: yamlage.ArmoredString{
+		Password: yamlage.ArmoredString{
 			Value:      "MyDatabasePassword",
 			Recipients: []age.Recipient{rec},
 		},

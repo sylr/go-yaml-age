@@ -2,6 +2,7 @@ package age
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -349,19 +350,79 @@ func TestComplexData(t *testing.T) {
 	})
 }
 
+func TestUnlmarshallingInputDocument(t *testing.T) {
+	tests := []struct {
+		Description string
+		Assertion   func(interface{}, ...interface{}) string
+		Input       string
+	}{
+		{
+			Description: "Bogus age payload: bogus base64",
+			Assertion:   ShouldBeNil,
+			Input: `
+password: !crypto/age |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----
+---
+password: !crypto/age |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----
+`,
+		},
+	}
+
+	id, err := age.NewScryptIdentity("point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, test := range tests {
+		buf := bytes.NewBufferString(test.Input)
+		node := yaml.Node{}
+
+		w := Wrapper{
+			Value:      &node,
+			Identities: []age.Identity{id},
+		}
+		decoder := yaml.NewDecoder(buf)
+
+		for {
+			err = decoder.Decode(&w)
+			if err == io.EOF {
+				break
+			} else {
+				Convey(test.Description, t, func() {
+					So(err, test.Assertion)
+				})
+			}
+
+			out, _ := yaml.Marshal(&node)
+			fmt.Println("---\n" + string(out) + "\n")
+		}
+	}
+}
+
 func TestUnlmarshallingBogusEncryptedData(t *testing.T) {
 	tests := []struct {
 		Description string
 		Assertion   func(interface{}, ...interface{}) string
-		YAML        string
+		Input       string
 	}{
 		{
 			Description: "Bogus age payload: bogus base64",
 			Assertion:   ShouldBeError,
-			YAML: `
-database_login: "service_1"
-database_host: "db.company.com:5432"
-database_password: !crypto/age |
+			Input: `password: !crypto/age |
   -----BEGIN AGE ENCRYPTED FILE-----
   YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBvTDRrOUlXRGFYcXkzaVZu
   WXpzZndRzIDE4ClZ3YVVHb0lVWlJtblVFazU4TlBkTitCWlg3dUNqd2N6R0hGVUFr
@@ -374,10 +435,7 @@ database_password: !crypto/age |
 		{
 			Description: "Bogus age payload: no base64",
 			Assertion:   ShouldBeError,
-			YAML: `
-database_login: "service_1"
-database_host: "db.company.com:5432"
-database_password: !crypto/age |
+			Input: `password: !crypto/age |
   -----BEGIN AGE ENCRYPTED FILE-----
   ...
   -----END AGE ENCRYPTED FILE-----
@@ -386,10 +444,7 @@ database_password: !crypto/age |
 		{
 			Description: "Bogus age payload: base64 not age data",
 			Assertion:   ShouldBeError,
-			YAML: `
-database_login: "service_1"
-database_host: "db.company.com:5432"
-database_password: !crypto/age |
+			Input: `password: !crypto/age |
   -----BEGIN AGE ENCRYPTED FILE-----
   cWtsc2RobGtxZGhqc2ts
   -----END AGE ENCRYPTED FILE-----
@@ -398,12 +453,33 @@ database_password: !crypto/age |
 		{
 			Description: "Not encrypted payload",
 			Assertion:   ShouldBeNil,
-			YAML: `
-database_login: "service_1"
-database_host: "db.company.com:5432"
-database_password: !crypto/age |
+			Input: `password: !crypto/age |
   this is a test
 `,
+		},
+		{
+			Description: "Several style defined",
+			Assertion:   ShouldBeError,
+			Input: `password: !crypto/age:SingleQuoted,DoubleQuoted |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
+		},
+		{
+			Description: "Unknown attribute",
+			Assertion:   ShouldBeError,
+			Input: `password: !crypto/age:Pwet |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
 		},
 	}
 
@@ -414,7 +490,7 @@ database_password: !crypto/age |
 	}
 
 	for _, test := range tests {
-		buf := bytes.NewBufferString(test.YAML)
+		buf := bytes.NewBufferString(test.Input)
 		node := yaml.Node{}
 
 		w := Wrapper{
@@ -426,6 +502,211 @@ database_password: !crypto/age |
 
 		Convey(test.Description, t, func() {
 			So(err, test.Assertion)
+		})
+	}
+}
+
+func TestUnlmarshallingMarshallingFormatting(t *testing.T) {
+	tests := []struct {
+		Description string
+		Assertion   func(interface{}, ...interface{}) string
+		Input       string
+		Expected    string
+	}{
+		{
+			Description: "Not style defined",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: !crypto/age ThisIsMyReallyEncryptedPassword`),
+		},
+		{
+			Description: "Double quoted",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:DoubleQuoted |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: !crypto/age:DoubleQuoted "ThisIsMyReallyEncryptedPassword"`),
+		},
+		{
+			Description: "Single quoted",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:SingleQuoted |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: !crypto/age:SingleQuoted 'ThisIsMyReallyEncryptedPassword'`),
+		},
+		{
+			Description: "Literal",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:Literal |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: !crypto/age:Literal |-
+  ThisIsMyReallyEncryptedPassword`),
+		},
+		{
+			Description: "Folded",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:Folded |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: !crypto/age:Folded >-
+  ThisIsMyReallyEncryptedPassword`),
+		},
+		{
+			Description: "Flow",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:Flow |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: !crypto/age:Flow ThisIsMyReallyEncryptedPassword`),
+		},
+		{
+			Description: "No tag",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:NoTag |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: ThisIsMyReallyEncryptedPassword`),
+		},
+		{
+			Description: "Double quoted, No Tag",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:DoubleQuoted,NoTag |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: "ThisIsMyReallyEncryptedPassword"`),
+		},
+		{
+			Description: "Single quoted, No Tag",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:SingleQuoted,NoTag |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: 'ThisIsMyReallyEncryptedPassword'`),
+		},
+		{
+			Description: "Literal, No Tag",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:Literal,NoTag |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: |-
+  ThisIsMyReallyEncryptedPassword`),
+		},
+		{
+			Description: "Folded, No Tag",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:Folded,NoTag |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: >-
+  ThisIsMyReallyEncryptedPassword`),
+		},
+		{
+			Description: "Flow, No Tag",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:Flow,NoTag |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: ThisIsMyReallyEncryptedPassword`),
+		},
+	}
+
+	id, err := age.NewScryptIdentity("point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, test := range tests {
+		buf := bytes.NewBufferString(test.Input)
+		node := yaml.Node{}
+
+		w := Wrapper{
+			Value:      &node,
+			Identities: []age.Identity{id},
+		}
+		decoder := yaml.NewDecoder(buf)
+		err = decoder.Decode(&w)
+
+		Convey(fmt.Sprintf("%s: Decode should not return error", test.Description), t, FailureHalts, func() {
+			So(err, ShouldBeNil)
+		})
+
+		actual := new(bytes.Buffer)
+		encoder := yaml.NewEncoder(actual)
+		encoder.SetIndent(2)
+		err = encoder.Encode(&node)
+
+		Convey(fmt.Sprintf("%s: Encode should not return error", test.Description), t, FailureHalts, func() {
+			So(err, ShouldBeNil)
+		})
+
+		Convey(test.Description, t, func() {
+			So(actual.String(), test.Assertion, test.Expected)
 		})
 	}
 }
