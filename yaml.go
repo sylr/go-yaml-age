@@ -37,7 +37,12 @@ func MarshalYAML(node *yaml.Node, recipients []age.Recipient) (*yaml.Node, error
 		return node, nil
 	}
 
-	armoredString := ArmoredString{Value: node.Value, Recipients: recipients}
+	armoredString := ArmoredString{
+		Value:      node.Value,
+		Recipients: recipients,
+		Tag:        node.Tag,
+	}
+
 	nodeInterface, err := armoredString.MarshalYAML()
 
 	return nodeInterface.(*yaml.Node), err
