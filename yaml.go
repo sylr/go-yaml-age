@@ -1,6 +1,8 @@
 package age
 
 import (
+	"strings"
+
 	"filippo.io/age"
 	"gopkg.in/yaml.v3"
 )
@@ -28,7 +30,10 @@ func MarshalYAML(node *yaml.Node, recipients []age.Recipient) (*yaml.Node, error
 		return node, nil
 	}
 
-	if node.Tag != YAMLTag {
+	switch {
+	case node.Tag == YAMLTag:
+	case strings.HasPrefix(node.Tag, YAMLTag+":"):
+	default:
 		return node, nil
 	}
 
