@@ -12,7 +12,7 @@ import (
 
 	"filippo.io/age"
 	"filippo.io/age/armor"
-	"gopkg.in/yaml.v3"
+	"sylr.dev/yaml/v3"
 )
 
 func TestSimpleDataString(t *testing.T) {

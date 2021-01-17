@@ -6,8 +6,8 @@ import (
 	"io"
 
 	"filippo.io/age"
-	yaml "gopkg.in/yaml.v3"
 	yamlage "sylr.dev/yaml/age/v3"
+	yaml "sylr.dev/yaml/v3"
 )
 
 func ExampleWrapper() {

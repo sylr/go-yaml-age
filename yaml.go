@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"filippo.io/age"
-	"gopkg.in/yaml.v3"
+	"sylr.dev/yaml/v3"
 )
 
 const (

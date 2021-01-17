@@ -7,7 +7,7 @@ import (
 
 	"filippo.io/age"
 	"filippo.io/age/armor"
-	"gopkg.in/yaml.v3"
+	"sylr.dev/yaml/v3"
 )
 
 // Wrapper is a struct that allows to decrypt crypted armored data in YAML as long

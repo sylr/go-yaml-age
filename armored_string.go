@@ -7,7 +7,7 @@ import (
 
 	"filippo.io/age"
 	"filippo.io/age/armor"
-	"gopkg.in/yaml.v3"
+	"sylr.dev/yaml/v3"
 )
 
 // ArmoredString is a struct holding the string to encrypt and the intended recipients.
