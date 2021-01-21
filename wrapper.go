@@ -42,6 +42,9 @@ type Wrapper struct {
 	Value interface{}
 	// Identities that will be used for decrypting.
 	Identities []age.Identity
+	// DiscardNoTag will not honour NoTag when decoding so you can re-encode with
+	// original tags.
+	DiscardNoTag bool
 }
 
 // UnmarshalYAML takes yaml.Node and recursively decrypt data marked with the
@@ -139,7 +142,7 @@ func (w Wrapper) resolve(node *yaml.Node) (*yaml.Node, error) {
 	tempTag := node.Tag
 	node.SetString(buf.String())
 
-	if !notag {
+	if w.DiscardNoTag || !notag {
 		node.Tag = tempTag
 	}
 

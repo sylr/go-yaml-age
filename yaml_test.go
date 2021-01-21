@@ -483,10 +483,11 @@ func TestUnlmarshallingBogusEncryptedData(t *testing.T) {
 
 func TestUnlmarshallingMarshallingFormatting(t *testing.T) {
 	tests := []struct {
-		Description string
-		Assertion   func(interface{}, ...interface{}) string
-		Input       string
-		Expected    string
+		Description  string
+		Assertion    func(interface{}, ...interface{}) string
+		Input        string
+		Expected     string
+		DiscardNoTag bool
 	}{
 		{
 			Description: "Not style defined",
@@ -648,6 +649,20 @@ func TestUnlmarshallingMarshallingFormatting(t *testing.T) {
   -----END AGE ENCRYPTED FILE-----`,
 			Expected: fmt.Sprintln(`password: ThisIsMyReallyEncryptedPassword`),
 		},
+		{
+			Description: "Flow, No Tag, DiscardNoTag",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:Flow,NoTag |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected:     fmt.Sprintln(`password: !crypto/age:Flow,NoTag ThisIsMyReallyEncryptedPassword`),
+			DiscardNoTag: true,
+		},
 	}
 
 	id, err := age.NewScryptIdentity("point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue")
@@ -661,8 +676,9 @@ func TestUnlmarshallingMarshallingFormatting(t *testing.T) {
 		node := yaml.Node{}
 
 		w := Wrapper{
-			Value:      &node,
-			Identities: []age.Identity{id},
+			Value:        &node,
+			Identities:   []age.Identity{id},
+			DiscardNoTag: test.DiscardNoTag,
 		}
 		decoder := yaml.NewDecoder(buf)
 		err = decoder.Decode(&w)
