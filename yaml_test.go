@@ -15,33 +15,39 @@ import (
 	"sylr.dev/yaml/v3"
 )
 
-func TestSimpleDataString(t *testing.T) {
-	// Key file
-	keyFile, err := os.Open("./testdata/age.key")
+func getKeysFromFiles(t *testing.T) ([]age.Identity, []age.Recipient) {
+	// Key files
+	idFile, err := os.Open("./testdata/age.key")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recFile, err := os.Open("./testdata/age.pub")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Parse key files for identities
-	ids, err := age.ParseIdentities(keyFile)
+	ids, err := age.ParseIdentities(idFile)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Parse key files for recipients
-	_, err = keyFile.Seek(0, io.SeekStart)
+	recs, err := age.ParseRecipients(recFile)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	recs, err := age.ParseRecipients(keyFile)
+	return ids, recs
+}
 
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestSimpleDataString(t *testing.T) {
+	ids, recs := getKeysFromFiles(t)
 
 	d1 := struct {
 		Data ArmoredString `yaml:"data"`
@@ -89,32 +95,7 @@ func TestSimpleDataString(t *testing.T) {
 }
 
 func TestSimpleDataArmoredString(t *testing.T) {
-	// Key file
-	keyFile, err := os.Open("./testdata/age.key")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Parse key files for identities
-	ids, err := age.ParseIdentities(keyFile)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Parse key files for recipients
-	_, err = keyFile.Seek(0, io.SeekStart)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	recs, err := age.ParseRecipients(keyFile)
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	ids, recs := getKeysFromFiles(t)
 
 	d1 := struct {
 		Data ArmoredString `yaml:"data"`
@@ -158,14 +139,7 @@ func TestSimpleDataArmoredString(t *testing.T) {
 }
 
 func TestAnonymousStruct(t *testing.T) {
-	// Add identities
-	keyFile, err := os.Open("./testdata/age.key")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ids, err := age.ParseIdentities(keyFile)
+	ids, _ := getKeysFromFiles(t)
 
 	// Open source yaml
 	yamlFile, err := os.Open("./testdata/lipsum.yaml")
@@ -218,25 +192,26 @@ type complexStruct struct {
 }
 
 func TestComplexData(t *testing.T) {
-	keyFile, err := os.Open("./testdata/age.key")
+	// Key files
+	idFile, err := os.Open("./testdata/age.key")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ids, err := age.ParseIdentities(keyFile)
+	recFile, err := os.Open("./testdata/age.pub")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = keyFile.Seek(0, io.SeekStart)
+	ids, err := age.ParseIdentities(idFile)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	recs, err := age.ParseRecipients(keyFile)
+	recs, err := age.ParseRecipients(recFile)
 
 	if err != nil {
 		t.Fatal(err)
