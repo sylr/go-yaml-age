@@ -10,12 +10,28 @@ import (
 	"sylr.dev/yaml/v3"
 )
 
+func NewArmoredString(str string, recipients []age.Recipient) ArmoredString {
+	a := ArmoredString{}
+	a.Recipients = recipients
+	a.Node = &yaml.Node{}
+	a.SetString(str)
+	a.Tag = YAMLTag
+
+	return a
+}
+
+func NewArmoredStringFromNode(node *yaml.Node, recipients []age.Recipient) ArmoredString {
+	a := ArmoredString{}
+	a.Recipients = recipients
+	a.Node = node
+
+	return a
+}
+
 // ArmoredString is a struct holding the string to encrypt and the intended recipients.
 type ArmoredString struct {
-	Value      string
+	*yaml.Node
 	Recipients []age.Recipient
-	Tag        string
-	Anchor     string
 }
 
 // String implements the Stringer interface.
@@ -25,7 +41,7 @@ func (a *ArmoredString) String() string {
 
 // UnmarshalYAML pushes the yaml.Node.Value in the ArmoredString.Value.
 func (a *ArmoredString) UnmarshalYAML(value *yaml.Node) error {
-	a.Value = value.Value
+	a.Node = value
 
 	return nil
 }

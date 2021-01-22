@@ -143,10 +143,7 @@ func ExampleArmoredString_encode() {
 	node := struct {
 		Password yamlage.ArmoredString `yaml:"password"`
 	}{
-		Password: yamlage.ArmoredString{
-			Value:      "MyDatabasePassword",
-			Recipients: []age.Recipient{rec},
-		},
+		Password: yamlage.NewArmoredString("MyDatabasePassword", []age.Recipient{rec}),
 	}
 
 	buf := bytes.NewBuffer(nil)

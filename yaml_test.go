@@ -46,94 +46,47 @@ func getKeysFromFiles(t *testing.T) ([]age.Identity, []age.Recipient) {
 	return ids, recs
 }
 
-func TestSimpleDataString(t *testing.T) {
+func TestSimpleData(t *testing.T) {
 	ids, recs := getKeysFromFiles(t)
 
+	// ArmoredStruct based
 	d1 := struct {
 		Data ArmoredString `yaml:"data"`
 	}{
-		Data: ArmoredString{
-			Value:      "this is a test",
-			Recipients: recs,
-		},
+		Data: NewArmoredString("this is a test", recs),
 	}
 
 	// Marshal
-	bytes, err := yaml.Marshal(&d1)
+	d1Bytes, err := yaml.Marshal(&d1)
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	str := string(bytes)
-
-	Convey("Check age armor header and footer", t, FailureHalts, func() {
-		So(str, ShouldContainSubstring, armor.Header)
-		So(str, ShouldContainSubstring, armor.Footer)
-	})
-
-	// Unmarshal
-	d2 := struct {
-		Data string `yaml:"data"`
-	}{}
-
-	w := Wrapper{
-		Value:      &d2,
-		Identities: ids,
-	}
-
-	err = yaml.Unmarshal(bytes, &w)
-
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-
-	Convey("Compare orginal struct with result of Unmarshalling", t, func() {
-		So(d1.Data.String(), ShouldEqual, d2.Data)
-	})
-}
-
-func TestSimpleDataArmoredString(t *testing.T) {
-	ids, recs := getKeysFromFiles(t)
-
-	d1 := struct {
-		Data ArmoredString `yaml:"data"`
-	}{
-		Data: ArmoredString{
-			Recipients: recs,
-			Value:      "this is a test",
-		},
-	}
-
-	// Marshal
-	bytes, err := yaml.Marshal(&d1)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	str := string(bytes)
-
-	Convey("Check age armor header and footer", t, FailureHalts, func() {
-		So(str, ShouldContainSubstring, armor.Header)
-		So(str, ShouldContainSubstring, armor.Footer)
-	})
-
-	// Unmarshal
-	d2 := struct {
-		Data string `yaml:"data"`
-	}{}
-
-	w := Wrapper{
-		Value:      &d2,
-		Identities: ids,
-	}
-
-	err = yaml.Unmarshal(bytes, &w)
-
-	Convey("Compare orginal struct with result of Unmarshalling", t, func() {
+	Convey("Marshal should not return error", t, FailureHalts, func() {
 		So(err, ShouldBeNil)
+	})
+
+	Convey("Check age armor header and footer", t, FailureHalts, func() {
+		str := string(d1Bytes)
+		So(str, ShouldContainSubstring, armor.Header)
+		So(str, ShouldContainSubstring, armor.Footer)
+	})
+
+	// String based
+	d2 := struct {
+		Data string `yaml:"data"`
+	}{}
+
+	w := Wrapper{
+		Value:      &d2,
+		Identities: ids,
+	}
+
+	// Populate d2 from d1 marshalling results
+	err = yaml.Unmarshal(d1Bytes, &w)
+
+	Convey("Unmarshal should not return error", t, FailureHalts, func() {
+		So(err, ShouldBeNil)
+	})
+
+	Convey("Compare Unmarshalling outputs", t, func() {
 		So(d1.Data.String(), ShouldEqual, d2.Data)
 	})
 }
@@ -192,30 +145,7 @@ type complexStruct struct {
 }
 
 func TestComplexData(t *testing.T) {
-	// Key files
-	idFile, err := os.Open("./testdata/age.key")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	recFile, err := os.Open("./testdata/age.pub")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ids, err := age.ParseIdentities(idFile)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	recs, err := age.ParseRecipients(recFile)
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	ids, recs := getKeysFromFiles(t)
 
 	// -- test 1 ---------------------------------------------------------------
 
@@ -225,40 +155,41 @@ func TestComplexData(t *testing.T) {
 			"this is the second pwet",
 		},
 		CryptedData: []ArmoredString{
-			{Value: "this is supposed to be crypted", Recipients: recs},
-			{Value: "this is also supposed to be crypted", Recipients: recs},
+			NewArmoredString("this is supposed to be crypted", recs),
+			NewArmoredString("this is also supposed to be crypted", recs),
 		},
 	}
 
-	out1, err := yaml.Marshal(&d1)
+	d1Bytes, err := yaml.Marshal(&d1)
+	fmt.Println(string(d1Bytes))
 
 	Convey("Unmarshal should not return error", t, FailureHalts, func() {
 		So(err, ShouldBeNil)
 	})
 
-	Convey("Search for non encrypted data which shouldn't be", t, func() {
+	Convey("Search for non encrypted data which shouldn't be", t, FailureHalts, func() {
 		So(err, ShouldBeNil)
-		So(string(out1), ShouldContainSubstring, "this is the first pwet")
-		So(string(out1), ShouldContainSubstring, "this is the second pwet")
+		So(string(d1Bytes), ShouldContainSubstring, "this is the first pwet")
+		So(string(d1Bytes), ShouldContainSubstring, "this is the second pwet")
 	})
 
-	Convey("Search for non encrypted data which should be encrypted", t, func() {
+	Convey("Search for non encrypted data which should be encrypted", t, FailureHalts, func() {
 		So(err, ShouldBeNil)
-		So(string(out1), ShouldNotContainSubstring, "this is supposed to be crypted")
-		So(string(out1), ShouldNotContainSubstring, "this is also supposed to be crypted")
+		So(string(d1Bytes), ShouldNotContainSubstring, "this is supposed to be crypted")
+		So(string(d1Bytes), ShouldNotContainSubstring, "this is also supposed to be crypted")
 	})
 
 	// -- test 2 ---------------------------------------------------------------
 
 	d2 := yaml.Node{}
 	w := Wrapper{Value: &d2, Identities: ids}
-	err = yaml.Unmarshal(out1, &w)
+	err = yaml.Unmarshal(d1Bytes, &w)
 
 	Convey("Unmarshal should not return error", t, FailureHalts, func() {
 		So(err, ShouldBeNil)
 	})
 
-	Convey("Search for encrypted data which shouldn't be", t, func() {
+	Convey("Search for encrypted data which shouldn't be", t, FailureHalts, func() {
 		var recurse func(node *yaml.Node)
 		recurse = func(node *yaml.Node) {
 			if node.Kind == yaml.SequenceNode || node.Kind == yaml.MappingNode {
@@ -283,7 +214,7 @@ func TestComplexData(t *testing.T) {
 		So(err, ShouldBeNil)
 	})
 
-	out2, err := yaml.Marshal(&d3)
+	d3bytes, err := yaml.Marshal(&d3)
 
 	Convey("Marshalling should not return error", t, FailureHalts, func() {
 		So(err, ShouldBeNil)
@@ -291,24 +222,24 @@ func TestComplexData(t *testing.T) {
 
 	Convey("Search for non encrypted data which shouldn't be", t, func() {
 		So(err, ShouldBeNil)
-		So(string(out2), ShouldContainSubstring, "this is the first pwet")
-		So(string(out2), ShouldContainSubstring, "this is the second pwet")
+		So(string(d3bytes), ShouldContainSubstring, "this is the first pwet")
+		So(string(d3bytes), ShouldContainSubstring, "this is the second pwet")
 	})
 
 	Convey("Search for non encrypted data which should be encrypted", t, func() {
-		So(string(out2), ShouldNotContainSubstring, "this is supposed to be crypted")
-		So(string(out2), ShouldNotContainSubstring, "this is also supposed to be crypted")
+		So(string(d3bytes), ShouldNotContainSubstring, "this is supposed to be crypted")
+		So(string(d3bytes), ShouldNotContainSubstring, "this is also supposed to be crypted")
 	})
 
 	Convey("Compare orginal yaml to re-marshalled one, it should differ due to age rekeying", t, func() {
-		So(string(out1), ShouldNotEqual, string(out2))
+		So(string(d1Bytes), ShouldNotEqual, string(d3bytes))
 	})
 
 	// -- test 4 ---------------------------------------------------------------
 
 	d4 := complexStruct{}
 	w.Value = &d4
-	err = yaml.Unmarshal(out1, &w)
+	err = yaml.Unmarshal(d1Bytes, &w)
 
 	Convey("Unmarshalling should not return error", t, FailureHalts, func() {
 		So(err, ShouldBeNil)
