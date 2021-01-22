@@ -416,6 +416,28 @@ func TestUnlmarshallingBogusEncryptedData(t *testing.T) {
 	}
 }
 
+func TestNoRecipientMarshal(t *testing.T) {
+	d1 := complexStruct{
+		RegularData: []string{
+			"this is the first pwet",
+			"this is the second pwet",
+		},
+		CryptedData: []ArmoredString{
+			NewArmoredString("this is supposed to be crypted", []age.Recipient{&age.X25519Recipient{}}),
+			NewArmoredString("this is also supposed to be crypted", []age.Recipient{&age.X25519Recipient{}}),
+		},
+	}
+
+	out := new(bytes.Buffer)
+	encoder := yaml.NewEncoder(out)
+	encoder.SetIndent(2)
+	err := encoder.Encode(d1)
+
+	Convey(fmt.Sprintf("Encode should return error"), t, FailureHalts, func() {
+		So(err, ShouldBeError)
+	})
+}
+
 func TestDecodeEncodeMarshal(t *testing.T) {
 	tests := []struct {
 		Description  string
