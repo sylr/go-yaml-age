@@ -15,6 +15,10 @@ import (
 	"sylr.dev/yaml/v3"
 )
 
+const (
+	passphrase = "point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue"
+)
+
 func getKeysFromFiles(t *testing.T) ([]age.Identity, []age.Recipient) {
 	// Key files
 	idFile, err := os.Open("./testdata/age.key")
@@ -287,7 +291,7 @@ password: !crypto/age |
 		},
 	}
 
-	id, err := age.NewScryptIdentity("point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue")
+	id, err := age.NewScryptIdentity(passphrase)
 
 	if err != nil {
 		t.Fatal(err)
@@ -389,7 +393,7 @@ func TestUnlmarshallingBogusEncryptedData(t *testing.T) {
 		},
 	}
 
-	id, err := age.NewScryptIdentity("point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue")
+	id, err := age.NewScryptIdentity(passphrase)
 
 	if err != nil {
 		t.Fatal(err)
@@ -610,15 +614,37 @@ dup: *passwd`,
 dup: *passwd`),
 			DiscardNoTag: false,
 		},
+		{
+			Description: "Comment",
+			Assertion:   ShouldEqual,
+			Input: `head:
+  # this is a head comment
+  password: &passwd !crypto/age | # this is a line comment
+    -----BEGIN AGE ENCRYPTED FILE-----
+    YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+    cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+    MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+    Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+    8zlxcVRSeplPrnuRdOUBgjoNtdUt
+    -----END AGE ENCRYPTED FILE-----
+  # this is a footer comment
+dup: *passwd`,
+			Expected: fmt.Sprintln(`head:
+  # this is a head comment
+  password: &passwd !crypto/age ThisIsMyReallyEncryptedPassword # this is a line comment
+  # this is a footer comment
+dup: *passwd`),
+			DiscardNoTag: false,
+		},
 	}
 
-	id, err := age.NewScryptIdentity("point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue")
+	id, err := age.NewScryptIdentity(passphrase)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	rec, err := age.NewScryptRecipient("point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue")
+	rec, err := age.NewScryptRecipient(passphrase)
 
 	if err != nil {
 		t.Fatal(err)

@@ -49,18 +49,17 @@ func (a *ArmoredString) UnmarshalYAML(value *yaml.Node) error {
 // MarshalYAML encrypts the ArmoredString and marshals it to YAML. If Recipients
 // is empty then the Value is kept unencrypted.
 func (a ArmoredString) MarshalYAML() (interface{}, error) {
-	var tag string
-
-	if len(a.Tag) > 0 {
-		tag = a.Tag
-	} else {
-		tag = YAMLTag
-	}
-
 	node := yaml.Node{
-		Kind:   yaml.ScalarNode,
-		Tag:    tag,
-		Anchor: a.Anchor,
+		Kind:        a.Kind,
+		Style:       a.Style,
+		Tag:         a.Tag,
+		Value:       a.Value,
+		Anchor:      a.Anchor,
+		HeadComment: a.HeadComment,
+		LineComment: a.LineComment,
+		FootComment: a.FootComment,
+		Line:        a.Line,
+		Column:      a.Column,
 	}
 
 	// If no recipients then do not encrypt.
