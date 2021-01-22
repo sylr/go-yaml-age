@@ -433,7 +433,7 @@ func TestNoRecipientMarshal(t *testing.T) {
 	encoder.SetIndent(2)
 	err := encoder.Encode(d1)
 
-	Convey(fmt.Sprintf("Encode should return error"), t, FailureHalts, func() {
+	Convey("Encode should return error", t, FailureHalts, func() {
 		So(err, ShouldBeError)
 	})
 }
@@ -716,7 +716,11 @@ dup: *passwd`),
 
 			reencoded := new(bytes.Buffer)
 			reencoder := yaml.NewEncoder(reencoded)
-			reencoder.Encode(&node)
+			err = reencoder.Encode(&node)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
 
 			input = reencoded.String()
 		}
