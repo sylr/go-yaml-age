@@ -15,6 +15,7 @@ type ArmoredString struct {
 	Value      string
 	Recipients []age.Recipient
 	Tag        string
+	Anchor     string
 }
 
 // String implements the Stringer interface.
@@ -41,8 +42,9 @@ func (a ArmoredString) MarshalYAML() (interface{}, error) {
 	}
 
 	node := yaml.Node{
-		Kind: yaml.ScalarNode,
-		Tag:  tag,
+		Kind:   yaml.ScalarNode,
+		Tag:    tag,
+		Anchor: a.Anchor,
 	}
 
 	// If no recipients then do not encrypt.

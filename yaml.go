@@ -41,6 +41,7 @@ func MarshalYAML(node *yaml.Node, recipients []age.Recipient) (*yaml.Node, error
 		Value:      node.Value,
 		Recipients: recipients,
 		Tag:        node.Tag,
+		Anchor:     node.Anchor,
 	}
 
 	nodeInterface, err := armoredString.MarshalYAML()
