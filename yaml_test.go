@@ -55,9 +55,9 @@ func TestSimpleData(t *testing.T) {
 
 	// ArmoredStruct based
 	d1 := struct {
-		Data ArmoredString `yaml:"data"`
+		Data String `yaml:"data"`
 	}{
-		Data: NewArmoredString("this is a test", recs),
+		Data: NewString("this is a test", recs),
 	}
 
 	// Marshal
@@ -144,8 +144,8 @@ func TestAnonymousStruct(t *testing.T) {
 }
 
 type complexStruct struct {
-	RegularData []string        `yaml:"regularData"`
-	CryptedData []ArmoredString `yaml:"cryptedData"`
+	RegularData []string `yaml:"regularData"`
+	CryptedData []String `yaml:"cryptedData"`
 }
 
 func TestComplexData(t *testing.T) {
@@ -158,9 +158,9 @@ func TestComplexData(t *testing.T) {
 			"this is the first pwet",
 			"this is the second pwet",
 		},
-		CryptedData: []ArmoredString{
-			NewArmoredString("this is supposed to be crypted", recs),
-			NewArmoredString("this is also supposed to be crypted", recs),
+		CryptedData: []String{
+			NewString("this is supposed to be crypted", recs),
+			NewString("this is also supposed to be crypted", recs),
 		},
 	}
 
@@ -422,9 +422,9 @@ func TestNoRecipientMarshal(t *testing.T) {
 			"this is the first pwet",
 			"this is the second pwet",
 		},
-		CryptedData: []ArmoredString{
-			NewArmoredString("this is supposed to be crypted", []age.Recipient{&age.X25519Recipient{}}),
-			NewArmoredString("this is also supposed to be crypted", []age.Recipient{&age.X25519Recipient{}}),
+		CryptedData: []String{
+			NewString("this is supposed to be crypted", []age.Recipient{&age.X25519Recipient{}}),
+			NewString("this is also supposed to be crypted", []age.Recipient{&age.X25519Recipient{}}),
 		},
 	}
 

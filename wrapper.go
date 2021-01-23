@@ -117,15 +117,15 @@ func (w Wrapper) resolve(node *yaml.Node) (*yaml.Node, error) {
 		return node, nil
 	}
 
-	var armoredString string
-	err := node.Decode(&armoredString)
+	var str string
+	err := node.Decode(&str)
 
 	if err != nil {
 		return nil, err
 	}
 
-	armoredStringReader := strings.NewReader(armoredString)
-	armoredReader := armor.NewReader(armoredStringReader)
+	stringReader := strings.NewReader(str)
+	armoredReader := armor.NewReader(stringReader)
 	decryptedReader, err := age.Decrypt(armoredReader, w.Identities...)
 
 	if err != nil {
