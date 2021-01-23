@@ -11,20 +11,20 @@ import (
 )
 
 func ExampleWrapper() {
-	yamlString := `
-password: !crypto/age |
+	yamlString := `password: !crypto/age |
   -----BEGIN AGE ENCRYPTED FILE-----
-  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBvTDRrOUlXRGFYcXkzaVZu
-  WXpzZndRIDE4ClZ3YVVHb0lVWlJtblVFazU4TlBkTitCWlg3dUNqd2N6R0hGVUFr
-  T2gwb2sKLS0tIGFPYXBybWRUelNKeWkzc1lrVGpXUHJ4dDI4bWFDZEl6OXhpeTNY
-  N0lIVjgKxPtRljkraTILjhf3v0MM5GmKnBwOMqLu2030RWMl6iW7YEYvunx2AMUA
-  grTyTgUElzo=
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
   -----END AGE ENCRYPTED FILE-----`
 
-	buf := bytes.NewBufferString(yamlString)
+	rbuf := bytes.NewBufferString(yamlString)
+	wbuf := bytes.NewBuffer(nil)
 
 	node := struct {
-		Password yamlage.ArmoredString `yaml:"password"`
+		Password yamlage.String `yaml:"password"`
 	}{}
 
 	id, err := age.NewScryptIdentity("point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue")
@@ -37,57 +37,59 @@ password: !crypto/age |
 		Value:      &node,
 		Identities: []age.Identity{id},
 	}
-	decoder := yaml.NewDecoder(buf)
+
+	decoder := yaml.NewDecoder(rbuf)
+	encoder := yaml.NewEncoder(wbuf)
+	encoder.SetIndent(2)
+
 	err = decoder.Decode(&w)
 
 	if err != nil {
 		panic(err)
 	}
 
-	buf = bytes.NewBuffer(nil)
-	encoder := yaml.NewEncoder(buf)
-	encoder.SetIndent(2)
 	err = encoder.Encode(&node)
 
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("%s", buf.String())
+	fmt.Printf("%s", wbuf.String())
 	// Output:
-	// password: !crypto/age MyDatabasePassword
+	// password: !crypto/age ThisIsMyReallyEncryptedPassword
 }
 
 func ExampleWrapper_anonymous() {
 	yamlString := `
 password: !crypto/age:DoubleQuoted |
   -----BEGIN AGE ENCRYPTED FILE-----
-  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBvTDRrOUlXRGFYcXkzaVZu
-  WXpzZndRIDE4ClZ3YVVHb0lVWlJtblVFazU4TlBkTitCWlg3dUNqd2N6R0hGVUFr
-  T2gwb2sKLS0tIGFPYXBybWRUelNKeWkzc1lrVGpXUHJ4dDI4bWFDZEl6OXhpeTNY
-  N0lIVjgKxPtRljkraTILjhf3v0MM5GmKnBwOMqLu2030RWMl6iW7YEYvunx2AMUA
-  grTyTgUElzo=
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
   -----END AGE ENCRYPTED FILE-----
 ---
 password: !crypto/age:SingleQuoted |
   -----BEGIN AGE ENCRYPTED FILE-----
-  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBvTDRrOUlXRGFYcXkzaVZu
-  WXpzZndRIDE4ClZ3YVVHb0lVWlJtblVFazU4TlBkTitCWlg3dUNqd2N6R0hGVUFr
-  T2gwb2sKLS0tIGFPYXBybWRUelNKeWkzc1lrVGpXUHJ4dDI4bWFDZEl6OXhpeTNY
-  N0lIVjgKxPtRljkraTILjhf3v0MM5GmKnBwOMqLu2030RWMl6iW7YEYvunx2AMUA
-  grTyTgUElzo=
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
   -----END AGE ENCRYPTED FILE-----
 ---
-password: !crypto/age:NoTag |
+password: !crypto/age:DoubleQuoted,NoTag |
   -----BEGIN AGE ENCRYPTED FILE-----
-  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBvTDRrOUlXRGFYcXkzaVZu
-  WXpzZndRIDE4ClZ3YVVHb0lVWlJtblVFazU4TlBkTitCWlg3dUNqd2N6R0hGVUFr
-  T2gwb2sKLS0tIGFPYXBybWRUelNKeWkzc1lrVGpXUHJ4dDI4bWFDZEl6OXhpeTNY
-  N0lIVjgKxPtRljkraTILjhf3v0MM5GmKnBwOMqLu2030RWMl6iW7YEYvunx2AMUA
-  grTyTgUElzo=
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCB4c3VtbURKYlhNclZORExq
+  cVdyM1RnIDE4ClJ3ejBxU292WGJpQWtLQ1NXMnN4THk5VWQvLzVzKzBmWTQvOVp5
+  MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
+  Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
+  8zlxcVRSeplPrnuRdOUBgjoNtdUt
   -----END AGE ENCRYPTED FILE-----`
 
-	buf := bytes.NewBufferString(yamlString)
+	rbuf := bytes.NewBufferString(yamlString)
+	wbuf := bytes.NewBuffer(nil)
 
 	id, err := age.NewScryptIdentity("point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue")
 
@@ -102,9 +104,8 @@ password: !crypto/age:NoTag |
 		Identities: []age.Identity{id},
 	}
 
-	output := new(bytes.Buffer)
-	decoder := yaml.NewDecoder(buf)
-	encoder := yaml.NewEncoder(output)
+	decoder := yaml.NewDecoder(rbuf)
+	encoder := yaml.NewEncoder(wbuf)
 	encoder.SetIndent(2)
 
 	for {
@@ -115,25 +116,24 @@ password: !crypto/age:NoTag |
 		} else if err != nil {
 			panic(err)
 		}
+
 		err = encoder.Encode(&node)
 
 		if err != nil {
 			panic(err)
 		}
-
 	}
 
-	fmt.Printf("%s", output.String())
-
+	fmt.Printf("%s", wbuf.String())
 	// Output:
-	// password: !crypto/age:DoubleQuoted "MyDatabasePassword"
+	// password: !crypto/age:DoubleQuoted "ThisIsMyReallyEncryptedPassword"
 	// ---
-	// password: !crypto/age:SingleQuoted 'MyDatabasePassword'
+	// password: !crypto/age:SingleQuoted 'ThisIsMyReallyEncryptedPassword'
 	// ---
-	// password: MyDatabasePassword
+	// password: "ThisIsMyReallyEncryptedPassword"
 }
 
-func ExampleArmoredString_encode() {
+func ExampleString_encode() {
 	rec, err := age.NewScryptRecipient("point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue")
 
 	if err != nil {
@@ -141,9 +141,9 @@ func ExampleArmoredString_encode() {
 	}
 
 	node := struct {
-		Password yamlage.ArmoredString `yaml:"password"`
+		Password yamlage.String `yaml:"password"`
 	}{
-		Password: yamlage.NewArmoredString("MyDatabasePassword", []age.Recipient{rec}),
+		Password: yamlage.NewString("ThisIsMyReallyEncryptedPassword", []age.Recipient{rec}),
 	}
 
 	buf := bytes.NewBuffer(nil)

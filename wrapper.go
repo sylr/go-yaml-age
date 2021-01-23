@@ -10,40 +10,15 @@ import (
 	"sylr.dev/yaml/v3"
 )
 
-// Wrapper is a struct that allows to decrypt crypted armored data in YAML as long
-// that the data is tagged with "!crypto/age".
-//
-//     database_login: mylogin
-//     database_password: !crypto/age |
-//       -----BEGIN AGE ENCRYPTED FILE-----
-//       ...
-//       ...
-//       -----END AGE ENCRYPTED FILE-----
-//
-// Example:
-//
-//     bytes := []byte(...)
-//     node := struct {
-//     	Key1 string `yaml:"key1"`
-//     	Key2 string `yaml:"key2"`
-//     }{}
-//     w := Wrapper{
-//     	Value:      &node,
-//     	Identities: []age.Indentity{...},
-//     }
-//     decoder := yaml.NewDecoder(in)
-//     err := decoder.Decode(&w)
-//
-// If you intend to only display the YAML data with decryted values you should
-// use `&yaml.Node{}` as `Wrapper.Value` so you can marshal it later with comments.
-//
+// Wrapper is a struct that allows to decrypt age encrypted armored data in YAML
+// as long that the data is tagged with "!crypto/age".
 type Wrapper struct {
 	// Value holds the struct that will be decrypted with the Identities.
 	Value interface{}
 	// Identities that will be used for decrypting.
 	Identities []age.Identity
-	// DiscardNoTag will not honour NoTag when decoding so you can re-encode with
-	// original tags.
+	// DiscardNoTag will not honour NoTag when decrypting so you can re-encrypt
+	// with original tags.
 	DiscardNoTag bool
 }
 

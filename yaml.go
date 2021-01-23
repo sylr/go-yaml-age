@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	// YAMLTag tag that is used to identify data to crypt/decrypt
+	// YAMLTag tag that is used to identify data to encrypt/decrypt
 	YAMLTag = "!crypto/age"
 )
 
