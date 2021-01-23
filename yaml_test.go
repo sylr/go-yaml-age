@@ -447,7 +447,7 @@ func TestDecodeEncodeMarshal(t *testing.T) {
 		DiscardNoTag bool
 	}{
 		{
-			Description: "Not style defined",
+			Description: "No style defined",
 			Assertion:   ShouldEqual,
 			Input: `password: !crypto/age |
   -----BEGIN AGE ENCRYPTED FILE-----
