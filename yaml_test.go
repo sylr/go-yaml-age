@@ -795,8 +795,6 @@ func TestIncorrectBehaviours(t *testing.T) {
 			})
 
 			// Re-decode
-			aez := actual.String()
-			fmt.Println(aez)
 			rebuf := bytes.NewBuffer(actual.Bytes())
 			renode := yaml.Node{}
 
@@ -819,7 +817,6 @@ func TestIncorrectBehaviours(t *testing.T) {
 			reencoder.SetIndent(2)
 
 			err = reencoder.Encode(&renode)
-			aez = reencoded.String()
 
 			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
 				So(err, ShouldBeNil)
