@@ -726,3 +726,110 @@ dup: *passwd`),
 		}
 	}
 }
+
+// TestIncorrectBehaviours defines a series of tests that produce known incorrect
+// behaviours that should be fixed
+func TestIncorrectBehaviours(t *testing.T) {
+	tests := []struct {
+		Description  string
+		Assertion    func(interface{}, ...interface{}) string
+		Input        string
+		Expected     string
+		DiscardNoTag bool
+	}{
+		{
+			Description: "Boolean",
+			Assertion:   ShouldEqual,
+			Input:       `password: !crypto/age:NoTag true`,
+			Expected:    `password: "true"` + "\n",
+		},
+	}
+
+	id, err := age.NewScryptIdentity(passphrase)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec, err := age.NewScryptRecipient(passphrase)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, test := range tests {
+		input := test.Input
+		for i := 1; i < 3; i++ {
+			buf := bytes.NewBufferString(input)
+			node := yaml.Node{}
+
+			w := Wrapper{
+				Value:        &node,
+				Identities:   []age.Identity{id},
+				DiscardNoTag: test.DiscardNoTag,
+			}
+
+			// Load YAML
+			decoder := yaml.NewDecoder(buf)
+			err = decoder.Decode(&w)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Decode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			// Encrypt decrypted values
+			mnode, err := MarshalYAML(&node, []age.Recipient{rec})
+
+			Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			// Marshal
+			actual := new(bytes.Buffer)
+			encoder := yaml.NewEncoder(actual)
+			encoder.SetIndent(2)
+			err = encoder.Encode(mnode)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			// Re-decode
+			aez := actual.String()
+			fmt.Println(aez)
+			rebuf := bytes.NewBuffer(actual.Bytes())
+			renode := yaml.Node{}
+
+			rew := Wrapper{
+				Value:        &renode,
+				Identities:   []age.Identity{id},
+				DiscardNoTag: test.DiscardNoTag,
+			}
+
+			redecoder := yaml.NewDecoder(rebuf)
+			err = redecoder.Decode(&rew)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			// Re-marshal
+			reencoded := new(bytes.Buffer)
+			reencoder := yaml.NewEncoder(reencoded)
+			reencoder.SetIndent(2)
+
+			err = reencoder.Encode(&renode)
+			aez = reencoded.String()
+
+			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey(fmt.Sprintf("%s (pass #%d): compare outputs", test.Description, i), t, func() {
+				So(reencoded.String(), test.Assertion, test.Expected)
+			})
+
+			input = reencoded.String()
+		}
+	}
+}
