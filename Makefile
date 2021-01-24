@@ -1,9 +1,13 @@
 GO      ?= go
 DEBUG   ?= 0
 VERBOSE ?= 0
+CODECOV ?= 0
 
 ifneq ($(DEBUG),0)
 GO_TEST_FLAGS        += -count=1
+endif
+ifneq ($(CODECOV),0)
+GO_TEST_FLAGS        += -coverprofile=coverage.txt -covermode=atomic
 endif
 ifneq ($(VERBOSE),0)
 GO_TEST_FLAGS        += -v

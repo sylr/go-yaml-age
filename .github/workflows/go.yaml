@@ -21,4 +21,10 @@ jobs:
     - name: Lint
       run: make lint
     - name: Test
-      run: make test VERBOSE=1
+      run: make test VERBOSE=1 CODECOV=1
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+        files: coverage.txt
+      if: matrix.go == '1.15'
