@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 
 	"filippo.io/age"
 	"filippo.io/age/armor"
@@ -72,6 +73,9 @@ func (s String) MarshalYAML() (interface{}, error) {
 		return &node, nil
 	}
 
+	// Force yaml literal string for encrypted data
+	node.Style = yaml.LiteralStyle
+
 	buf := &bytes.Buffer{}
 	armorWriter := armor.NewWriter(buf)
 	encryptWriter, err := age.Encrypt(armorWriter, s.Recipients...)
@@ -89,7 +93,7 @@ func (s String) MarshalYAML() (interface{}, error) {
 	encryptWriter.Close()
 	armorWriter.Close()
 
-	node.Value = buf.String()
+	node.Value = strings.TrimSuffix(buf.String(), "\n")
 
 	return &node, nil
 }
