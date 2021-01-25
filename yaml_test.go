@@ -392,7 +392,7 @@ func TestUnlmarshallingBogusEncryptedData(t *testing.T) {
 `,
 		},
 		{
-			Description: "Several style defined",
+			Description: "Several styles defined",
 			Assertion:   ShouldBeError,
 			Input: `password: !crypto/age:SingleQuoted,DoubleQuoted |
   -----BEGIN AGE ENCRYPTED FILE-----
