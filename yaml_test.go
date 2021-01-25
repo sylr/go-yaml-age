@@ -157,10 +157,12 @@ func TestComplexData(t *testing.T) {
 		RegularData: []string{
 			"this is the first pwet",
 			"this is the second pwet",
+			"this is the third\nand multi-lines pwet",
 		},
 		CryptedData: []String{
 			NewString("this is supposed to be crypted", recs),
 			NewString("this is also supposed to be crypted", recs),
+			NewString("this is multi-lines\nand also supposed to be crypted", recs),
 		},
 	}
 
@@ -175,12 +177,16 @@ func TestComplexData(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(string(d1Bytes), ShouldContainSubstring, "this is the first pwet")
 		So(string(d1Bytes), ShouldContainSubstring, "this is the second pwet")
+		So(string(d1Bytes), ShouldContainSubstring, "this is the third\n")
+		So(string(d1Bytes), ShouldContainSubstring, "and multi-lines pwet")
 	})
 
 	Convey("Search for non encrypted data which should be encrypted", t, FailureHalts, func() {
 		So(err, ShouldBeNil)
 		So(string(d1Bytes), ShouldNotContainSubstring, "this is supposed to be crypted")
 		So(string(d1Bytes), ShouldNotContainSubstring, "this is also supposed to be crypted")
+		So(string(d1Bytes), ShouldNotContainSubstring, "this is multi-lines\n")
+		So(string(d1Bytes), ShouldNotContainSubstring, "and also supposed to be crypted")
 	})
 
 	// -- test 2 ---------------------------------------------------------------
@@ -228,11 +234,15 @@ func TestComplexData(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(string(d3bytes), ShouldContainSubstring, "this is the first pwet")
 		So(string(d3bytes), ShouldContainSubstring, "this is the second pwet")
+		So(string(d3bytes), ShouldContainSubstring, "this is the third\n")
+		So(string(d3bytes), ShouldContainSubstring, "and multi-lines pwet")
 	})
 
 	Convey("Search for non encrypted data which should be encrypted", t, func() {
 		So(string(d3bytes), ShouldNotContainSubstring, "this is supposed to be crypted")
 		So(string(d3bytes), ShouldNotContainSubstring, "this is also supposed to be crypted")
+		So(string(d3bytes), ShouldNotContainSubstring, "this is multi-lines\n")
+		So(string(d3bytes), ShouldNotContainSubstring, "and also supposed to be crypted")
 	})
 
 	Convey("Compare orginal yaml to re-marshalled one, it should differ due to age rekeying", t, func() {
@@ -252,11 +262,13 @@ func TestComplexData(t *testing.T) {
 	Convey("Search for non encrypted data which should be", t, func() {
 		So(d4.RegularData[0], ShouldContainSubstring, "this is the first pwet")
 		So(d4.RegularData[1], ShouldContainSubstring, "this is the second pwet")
+		So(d4.RegularData[2], ShouldContainSubstring, "this is the third\nand multi-lines pwet")
 	})
 
 	Convey("Search for encrypted data which shouldn't be", t, func() {
 		So(d4.CryptedData[0].String(), ShouldContainSubstring, "this is supposed to be crypted")
 		So(d4.CryptedData[1].String(), ShouldContainSubstring, "this is also supposed to be crypted")
+		So(d4.CryptedData[2].String(), ShouldNotContainSubstring, "this is also supposed to be crypted\nand multi-lines")
 	})
 }
 
@@ -668,6 +680,129 @@ dup: *passwd`,
   password: &passwd !crypto/age ThisIsMyReallyEncryptedPassword # this is a line comment
   # this is a footer comment
 dup: *passwd`),
+			DiscardNoTag: false,
+		},
+		{
+			Description: "Multi-lines",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBGek45eXVhaTFXVHo2Sm5P
+  amVzMEJRIDE4CkxpVDU2Z2R3bXFhYjNyRGcwRTFUYmxXTUt6WWhObTk0N0ovWlls
+  OXBIK1UKLS0tIDZySlVPekJzOVRvUXhpNlNDc1I4TnNKdVVsU2h0THpoOTFNejNY
+  OVBkc1kK10MLHpdxC/BBHvWw2v2MD8PII1zSWrK1YE4V9HgCkkwwBvgxLk2aAcIG
+  jApnU5I8D42BUa9lsQiDAG1yXLRrAyFv4WbPyAVzoSUWh7EDbaz1hTU=
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: !crypto/age |-
+  This
+  Is
+  My
+  Really
+  Encrypted
+  And
+  Multilines
+  Password`),
+			DiscardNoTag: false,
+		},
+		{
+			Description: "Multi-lines, Double Quoted",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:DoubleQuoted |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBGek45eXVhaTFXVHo2Sm5P
+  amVzMEJRIDE4CkxpVDU2Z2R3bXFhYjNyRGcwRTFUYmxXTUt6WWhObTk0N0ovWlls
+  OXBIK1UKLS0tIDZySlVPekJzOVRvUXhpNlNDc1I4TnNKdVVsU2h0THpoOTFNejNY
+  OVBkc1kK10MLHpdxC/BBHvWw2v2MD8PII1zSWrK1YE4V9HgCkkwwBvgxLk2aAcIG
+  jApnU5I8D42BUa9lsQiDAG1yXLRrAyFv4WbPyAVzoSUWh7EDbaz1hTU=
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected:     fmt.Sprintln(`password: !crypto/age:DoubleQuoted "This\nIs\nMy\nReally\nEncrypted\nAnd\nMultilines\nPassword"`),
+			DiscardNoTag: false,
+		},
+		{
+			Description: "Multi-lines, Double Quoted, No Tag",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:DoubleQuoted,NoTag |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBGek45eXVhaTFXVHo2Sm5P
+  amVzMEJRIDE4CkxpVDU2Z2R3bXFhYjNyRGcwRTFUYmxXTUt6WWhObTk0N0ovWlls
+  OXBIK1UKLS0tIDZySlVPekJzOVRvUXhpNlNDc1I4TnNKdVVsU2h0THpoOTFNejNY
+  OVBkc1kK10MLHpdxC/BBHvWw2v2MD8PII1zSWrK1YE4V9HgCkkwwBvgxLk2aAcIG
+  jApnU5I8D42BUa9lsQiDAG1yXLRrAyFv4WbPyAVzoSUWh7EDbaz1hTU=
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected:     fmt.Sprintln(`password: "This\nIs\nMy\nReally\nEncrypted\nAnd\nMultilines\nPassword"`),
+			DiscardNoTag: false,
+		},
+		{
+			Description: "Multi-lines, Literal",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:Literal |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBGek45eXVhaTFXVHo2Sm5P
+  amVzMEJRIDE4CkxpVDU2Z2R3bXFhYjNyRGcwRTFUYmxXTUt6WWhObTk0N0ovWlls
+  OXBIK1UKLS0tIDZySlVPekJzOVRvUXhpNlNDc1I4TnNKdVVsU2h0THpoOTFNejNY
+  OVBkc1kK10MLHpdxC/BBHvWw2v2MD8PII1zSWrK1YE4V9HgCkkwwBvgxLk2aAcIG
+  jApnU5I8D42BUa9lsQiDAG1yXLRrAyFv4WbPyAVzoSUWh7EDbaz1hTU=
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: !crypto/age:Literal |-
+  This
+  Is
+  My
+  Really
+  Encrypted
+  And
+  Multilines
+  Password`),
+			DiscardNoTag: false,
+		},
+		{
+			Description: "Multi-lines, Folded",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:Folded |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBGek45eXVhaTFXVHo2Sm5P
+  amVzMEJRIDE4CkxpVDU2Z2R3bXFhYjNyRGcwRTFUYmxXTUt6WWhObTk0N0ovWlls
+  OXBIK1UKLS0tIDZySlVPekJzOVRvUXhpNlNDc1I4TnNKdVVsU2h0THpoOTFNejNY
+  OVBkc1kK10MLHpdxC/BBHvWw2v2MD8PII1zSWrK1YE4V9HgCkkwwBvgxLk2aAcIG
+  jApnU5I8D42BUa9lsQiDAG1yXLRrAyFv4WbPyAVzoSUWh7EDbaz1hTU=
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: !crypto/age:Folded >-
+  This
+
+  Is
+
+  My
+
+  Really
+
+  Encrypted
+
+  And
+
+  Multilines
+
+  Password`),
+			DiscardNoTag: false,
+		},
+		{
+			Description: "Multi-lines, Flow",
+			Assertion:   ShouldEqual,
+			Input: `password: !crypto/age:Flow |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBGek45eXVhaTFXVHo2Sm5P
+  amVzMEJRIDE4CkxpVDU2Z2R3bXFhYjNyRGcwRTFUYmxXTUt6WWhObTk0N0ovWlls
+  OXBIK1UKLS0tIDZySlVPekJzOVRvUXhpNlNDc1I4TnNKdVVsU2h0THpoOTFNejNY
+  OVBkc1kK10MLHpdxC/BBHvWw2v2MD8PII1zSWrK1YE4V9HgCkkwwBvgxLk2aAcIG
+  jApnU5I8D42BUa9lsQiDAG1yXLRrAyFv4WbPyAVzoSUWh7EDbaz1hTU=
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`password: !crypto/age:Flow |-
+  This
+  Is
+  My
+  Really
+  Encrypted
+  And
+  Multilines
+  Password`),
 			DiscardNoTag: false,
 		},
 	}
