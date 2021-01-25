@@ -265,6 +265,7 @@ func TestUnlmarshallingInputDocument(t *testing.T) {
 		Description string
 		Assertion   func(interface{}, ...interface{}) string
 		Input       string
+		Expected    string
 	}{
 		{
 			Description: "Bogus age payload: bogus base64",
@@ -286,7 +287,10 @@ password: !crypto/age |
   MTQrak0KLS0tIFI1U1RnZXFDVU5YbGJTU3lpNnBOdEVybDdtQmUrM1VkcHV4OElN
   Zm1aZ1kKvhgBDqN8umSS+EmwRwAKj9wNicvbWuynN7W0wxu6apXn57icXGgxiFK0
   8zlxcVRSeplPrnuRdOUBgjoNtdUt
-  -----END AGE ENCRYPTED FILE-----
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: `password: !crypto/age ThisIsMyReallyEncryptedPassword
+---
+password: !crypto/age ThisIsMyReallyEncryptedPassword
 `,
 		},
 	}
@@ -299,6 +303,7 @@ password: !crypto/age |
 
 	for _, test := range tests {
 		buf := bytes.NewBufferString(test.Input)
+		actual := bytes.NewBuffer(nil)
 		node := yaml.Node{}
 
 		w := Wrapper{
@@ -306,6 +311,7 @@ password: !crypto/age |
 			Identities: []age.Identity{id},
 		}
 		decoder := yaml.NewDecoder(buf)
+		encoder := yaml.NewEncoder(actual)
 
 		for {
 			err = decoder.Decode(&w)
@@ -317,9 +323,15 @@ password: !crypto/age |
 				})
 			}
 
-			out, _ := yaml.Marshal(&node)
-			fmt.Println("---\n" + string(out) + "\n")
+			err := encoder.Encode(&node)
+			Convey(test.Description, t, func() {
+				So(err, ShouldBeNil)
+			})
 		}
+
+		Convey(test.Description, t, func() {
+			So(actual.String(), ShouldEqual, test.Expected)
+		})
 	}
 }
 
