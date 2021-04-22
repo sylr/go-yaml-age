@@ -43,8 +43,7 @@ $(GO_TOOLS_GOLANGCI_LINT):
 
 .PHONY: go-mod-verify go-mod-tidy
 
-go-mod-verify:
-	$(GO) mod download
+go-mod-verify: go-mod-tidy
 	git diff --quiet go.* || git diff --exit-code go.* || exit 1
 
 go-mod-tidy:
