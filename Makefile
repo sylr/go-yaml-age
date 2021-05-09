@@ -47,5 +47,5 @@ go-mod-verify: go-mod-tidy
 	git diff --quiet go.* || git diff --exit-code go.* || exit 1
 
 go-mod-tidy:
-	$(GO) mod download
 	$(GO) mod tidy
+	$(GO) mod download
