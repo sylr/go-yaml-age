@@ -805,6 +805,31 @@ dup: *passwd`),
   Password`),
 			DiscardNoTag: false,
 		},
+		{
+			Description: "Sequence",
+			Assertion:   ShouldEqual,
+			Input: `passwords:
+- !crypto/age:DoubleQuoted |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBGek45eXVhaTFXVHo2Sm5P
+  amVzMEJRIDE4CkxpVDU2Z2R3bXFhYjNyRGcwRTFUYmxXTUt6WWhObTk0N0ovWlls
+  OXBIK1UKLS0tIDZySlVPekJzOVRvUXhpNlNDc1I4TnNKdVVsU2h0THpoOTFNejNY
+  OVBkc1kK10MLHpdxC/BBHvWw2v2MD8PII1zSWrK1YE4V9HgCkkwwBvgxLk2aAcIG
+  jApnU5I8D42BUa9lsQiDAG1yXLRrAyFv4WbPyAVzoSUWh7EDbaz1hTU=
+  -----END AGE ENCRYPTED FILE-----
+- !crypto/age:DoubleQuoted |
+  -----BEGIN AGE ENCRYPTED FILE-----
+  YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNjcnlwdCBGek45eXVhaTFXVHo2Sm5P
+  amVzMEJRIDE4CkxpVDU2Z2R3bXFhYjNyRGcwRTFUYmxXTUt6WWhObTk0N0ovWlls
+  OXBIK1UKLS0tIDZySlVPekJzOVRvUXhpNlNDc1I4TnNKdVVsU2h0THpoOTFNejNY
+  OVBkc1kK10MLHpdxC/BBHvWw2v2MD8PII1zSWrK1YE4V9HgCkkwwBvgxLk2aAcIG
+  jApnU5I8D42BUa9lsQiDAG1yXLRrAyFv4WbPyAVzoSUWh7EDbaz1hTU=
+  -----END AGE ENCRYPTED FILE-----`,
+			Expected: fmt.Sprintln(`passwords:
+- !crypto/age:DoubleQuoted "This\nIs\nMy\nReally\nEncrypted\nAnd\nMultilines\nPassword"
+- !crypto/age:DoubleQuoted "This\nIs\nMy\nReally\nEncrypted\nAnd\nMultilines\nPassword"`),
+			DiscardNoTag: false,
+		},
 	}
 
 	id, err := age.NewScryptIdentity(passphrase)
@@ -835,6 +860,7 @@ dup: *passwd`),
 			decoder := yaml.NewDecoder(buf)
 			encoder := yaml.NewEncoder(actual)
 			encoder.SetIndent(2)
+			encoder.SetSequenceUndent(true)
 
 			// Load YAML
 			err = decoder.Decode(&w)
@@ -863,6 +889,9 @@ dup: *passwd`),
 
 			reencoded := new(bytes.Buffer)
 			reencoder := yaml.NewEncoder(reencoded)
+			reencoder.SetIndent(2)
+			reencoder.SetSequenceUndent(true)
+
 			err = reencoder.Encode(&node)
 
 			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
@@ -935,6 +964,7 @@ func TestIncorrectBehaviours(t *testing.T) {
 			actual := new(bytes.Buffer)
 			encoder := yaml.NewEncoder(actual)
 			encoder.SetIndent(2)
+			encoder.SetSequenceUndent(true)
 			err = encoder.Encode(mnode)
 
 			Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
@@ -962,6 +992,7 @@ func TestIncorrectBehaviours(t *testing.T) {
 			reencoded := new(bytes.Buffer)
 			reencoder := yaml.NewEncoder(reencoded)
 			reencoder.SetIndent(2)
+			reencoder.SetSequenceUndent(true)
 
 			err = reencoder.Encode(&renode)
 
