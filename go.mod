@@ -5,7 +5,7 @@ go 1.15
 require (
 	filippo.io/age v1.0.0
 	github.com/smartystreets/goconvey v1.7.2
-	sylr.dev/yaml/v3 v3.0.0-20220527083315-54c415adfca1
+	sylr.dev/yaml/v3 v3.0.0-20220527135632-500fddf2b049
 )
 
 require (
