@@ -81,7 +81,7 @@ func (s String) MarshalYAML() (interface{}, error) {
 	encryptWriter, err := age.Encrypt(armorWriter, s.Recipients...)
 
 	if err != nil {
-		return nil, fmt.Errorf("age: %w", err)
+		return nil, fmt.Errorf("%w: %s", ErrUpstreamAgeError, err)
 	}
 
 	_, err = io.WriteString(encryptWriter, s.Value)

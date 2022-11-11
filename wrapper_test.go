@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"testing"
-
-	. "github.com/smartystreets/goconvey/convey"
 
 	"filippo.io/age"
 	"filippo.io/age/armor"
+	. "github.com/smartystreets/goconvey/convey"
+
 	"sylr.dev/yaml/v3"
 )
 
@@ -191,7 +192,7 @@ func TestComplexData(t *testing.T) {
 	// -- test 2 ---------------------------------------------------------------
 
 	d2 := yaml.Node{}
-	w := Wrapper{Value: &d2, Identities: ids}
+	w := Wrapper{Value: &d2, Identities: ids, Recipients: recs}
 	err = yaml.Unmarshal(d1Bytes, &w)
 
 	Convey("Unmarshal should not return error", t, FailureHalts, func() {
@@ -217,13 +218,7 @@ func TestComplexData(t *testing.T) {
 
 	// -- test 3 ---------------------------------------------------------------
 
-	d3, err := MarshalYAML(&d2, recs)
-
-	Convey("MarshalYAML should not return error", t, FailureHalts, func() {
-		So(err, ShouldBeNil)
-	})
-
-	d3bytes, err := yaml.Marshal(&d3)
+	d3bytes, err := yaml.Marshal(&w)
 
 	Convey("Marshalling should not return error", t, FailureHalts, func() {
 		So(err, ShouldBeNil)
@@ -462,13 +457,14 @@ func TestNoRecipientMarshal(t *testing.T) {
 }
 
 func TestDecodeEncodeMarshal(t *testing.T) {
-	tests := []struct {
+	type testData struct {
 		Description  string
 		Assertion    func(interface{}, ...interface{}) string
 		Input        string
 		Expected     string
 		DiscardNoTag bool
-	}{
+	}
+	tests := []testData{
 		{
 			Description: "No style defined",
 			Assertion:   ShouldEqual,
@@ -818,7 +814,7 @@ dup: *passwd`),
 		t.Fatal(err)
 	}
 
-	for _, test := range tests {
+	runTest := func(t *testing.T, test testData) {
 		input := test.Input
 		for i := 1; i < 3; i++ {
 			buf := bytes.NewBufferString(input)
@@ -827,6 +823,7 @@ dup: *passwd`),
 			w := Wrapper{
 				Value:        &node,
 				Identities:   []age.Identity{id},
+				Recipients:   []age.Recipient{rec},
 				DiscardNoTag: test.DiscardNoTag,
 			}
 
@@ -854,7 +851,7 @@ dup: *passwd`),
 			})
 
 			// Marshall encrypted values
-			_, err := MarshalYAML(&node, []age.Recipient{rec})
+			_, err := yaml.Marshal(&node)
 
 			Convey(fmt.Sprintf("%s (pass #%d): MarshalYAML should not return error", test.Description, i), t, FailureHalts, func() {
 				So(err, ShouldBeNil)
@@ -869,12 +866,58 @@ dup: *passwd`),
 			})
 
 			input = reencoded.String()
+
+			// try again ignoring encrypted values and make sure we get the same result
+
+			buf = bytes.NewBufferString(input)
+			node = yaml.Node{}
+
+			w = Wrapper{
+				Value:        &node,
+				DiscardNoTag: test.DiscardNoTag,
+				NoDecrypt:    true,
+			}
+
+			actual = new(bytes.Buffer)
+			decoder = yaml.NewDecoder(buf)
+			encoder = yaml.NewEncoder(actual)
+			encoder.SetIndent(2)
+
+			// Load YAML
+			err = decoder.Decode(&w)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Decode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			err = encoder.Encode(&node)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			b, err := yaml.Marshal(&w)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Marshal should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey(fmt.Sprintf("%s (pass #%d): compare outputs", test.Description, i), t, func() {
+				So(string(b), ShouldEqual, input)
+			})
 		}
+	}
+
+	for _, test := range tests {
+		t.Run(test.Description, func(t *testing.T) {
+			t.Parallel()
+			runTest(t, test)
+		})
 	}
 }
 
 // TestIncorrectBehaviours defines a series of tests that produce known incorrect
-// behaviours that should be fixed
+// behaviours that should be fixed.
 func TestIncorrectBehaviours(t *testing.T) {
 	tests := []struct {
 		Description  string
@@ -912,6 +955,7 @@ func TestIncorrectBehaviours(t *testing.T) {
 			w := Wrapper{
 				Value:        &node,
 				Identities:   []age.Identity{id},
+				Recipients:   []age.Recipient{rec},
 				DiscardNoTag: test.DiscardNoTag,
 			}
 
@@ -924,36 +968,27 @@ func TestIncorrectBehaviours(t *testing.T) {
 			})
 
 			// Encrypt decrypted values
-			mnode, err := MarshalYAML(&node, []age.Recipient{rec})
-
-			Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
-				So(err, ShouldBeNil)
-			})
-
-			// Marshal
-			actual := new(bytes.Buffer)
-			encoder := yaml.NewEncoder(actual)
-			encoder.SetIndent(2)
-			err = encoder.Encode(mnode)
+			mnode, err := yaml.Marshal(&w)
 
 			Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
 				So(err, ShouldBeNil)
 			})
 
 			// Re-decode
-			rebuf := bytes.NewBuffer(actual.Bytes())
+			rebuf := bytes.NewBuffer(mnode)
 			renode := yaml.Node{}
 
 			rew := Wrapper{
 				Value:        &renode,
 				Identities:   []age.Identity{id},
+				Recipients:   []age.Recipient{rec},
 				DiscardNoTag: test.DiscardNoTag,
 			}
 
 			redecoder := yaml.NewDecoder(rebuf)
 			err = redecoder.Decode(&rew)
 
-			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
+			Convey(fmt.Sprintf("%s (pass #%d): Re-Decode should not return error", test.Description, i), t, FailureHalts, func() {
 				So(err, ShouldBeNil)
 			})
 
@@ -962,7 +997,7 @@ func TestIncorrectBehaviours(t *testing.T) {
 			reencoder := yaml.NewEncoder(reencoded)
 			reencoder.SetIndent(2)
 
-			err = reencoder.Encode(&renode)
+			err = reencoder.Encode(&rew)
 
 			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
 				So(err, ShouldBeNil)
@@ -975,4 +1010,87 @@ func TestIncorrectBehaviours(t *testing.T) {
 			input = reencoded.String()
 		}
 	}
+}
+
+func TestNoReencrypt(t *testing.T) {
+	input := `
+foo: !crypto/age bar
+baz: plain text
+`
+	identities, recipients := getKeysFromFiles(t)
+	var node yaml.Node
+
+	err := yaml.Unmarshal([]byte(input), &Wrapper{
+		Value: &node,
+	})
+
+	Convey("Unmarshal should not return error", t, FailureHalts, func() {
+		So(err, ShouldBeNil)
+	})
+
+	w := Wrapper{
+		Value:      &node,
+		Identities: identities,
+		Recipients: recipients,
+	}
+
+	b, err := yaml.Marshal(&w)
+
+	Convey("Marshal should not return error", t, FailureHalts, func() {
+		So(err, ShouldBeNil)
+	})
+
+	decoded := string(b)
+	input = fmt.Sprintf("%s\nqux: !crypto/age quux", b)
+	node = yaml.Node{}
+
+	err = yaml.NewDecoder(strings.NewReader(input)).Decode(&Wrapper{
+		Value:     &node,
+		NoDecrypt: true,
+	})
+
+	Convey("NewDecoder should not return error", t, FailureHalts, func() {
+		So(err, ShouldBeNil)
+	})
+
+	b, err = yaml.Marshal(&w)
+
+	Convey("Marshal should not return error", t, FailureHalts, func() {
+		So(err, ShouldBeNil)
+	})
+
+	Convey("Marshaled data look the same as original", t, FailureHalts, func() {
+		So(string(b), ShouldStartWith, decoded)
+	})
+
+	wantPrefix := "qux: !crypto/age |-\n    -----BEGIN AGE ENCRYPTED FILE-----"
+
+	Convey("Marshaled data should be encrypted", t, FailureHalts, func() {
+		So(strings.TrimPrefix(string(b), decoded), ShouldStartWith, wantPrefix)
+	})
+
+	node = yaml.Node{}
+	err = yaml.Unmarshal(b, &Wrapper{
+		Value:      &node,
+		Identities: identities,
+	})
+
+	Convey("Unmarshal should not return error", t, FailureHalts, func() {
+		So(err, ShouldBeNil)
+	})
+
+	b, err = yaml.Marshal(&node)
+
+	Convey("Marshal should not return error", t, FailureHalts, func() {
+		So(err, ShouldBeNil)
+	})
+
+	want := `foo: !crypto/age bar
+baz: plain text
+qux: !crypto/age quux
+`
+
+	Convey("Marshaled data not as expected", t, FailureHalts, func() {
+		So(string(b), ShouldEqual, want)
+	})
 }

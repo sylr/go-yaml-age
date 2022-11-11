@@ -10,37 +10,63 @@ import (
 	"sylr.dev/yaml/v3"
 )
 
-// Wrapper is a struct that allows to decrypt age encrypted armored data in YAML
-// as long that the data is tagged with "!crypto/age".
+const (
+	// YAMLTag tag that is used to identify data to encrypt/decrypt
+	YAMLTag       = "!crypto/age"
+	YAMLTagPrefix = "!crypto/age:"
+)
+
+var _ yaml.Unmarshaler = (*Wrapper)(nil)
+var _ yaml.Marshaler = (*Wrapper)(nil)
+
+// Wrapper is a struct used as a wrapper for yaml.Marshal and yaml.Unmarshal.
 type Wrapper struct {
-	// Value holds the struct that will be decrypted with the Identities.
+	// Value holds the struct that will either be decrypted with the given
+	// Identities or encrypted with the given Recipients.
 	Value interface{}
-	// Identities that will be used for decrypting.
+
+	// Identities that will be used to try decrypting encrypted Value.
 	Identities []age.Identity
-	// DiscardNoTag will not honour NoTag when decrypting so you can re-encrypt
-	// with original tags.
+
+	// Recipients that will be used for encrypting un-encrypted Value.
+	Recipients []age.Recipient
+
+	// DiscardNoTag instructs the Unmarshaler to not honour the NoTag
+	// `!crypto/age` tag attribute. This is useful when re-keying data.
 	DiscardNoTag bool
+
+	// ForceNoTag strip the `!crypto/age` tags from the Marshaler output.
+	ForceNoTag bool
+
+	// NoDecrypt inscruts the Unmarshaler to leave encrypted data encrypted.
+	// This is useful when you want to Marshal new un-encrytped data in a
+	// document already containing encrypted data.
+	NoDecrypt bool
 }
 
-// UnmarshalYAML takes yaml.Node and recursively decrypt data marked with the
-// !crypto/age YAML tag.
+// UnmarshalYAML takes a yaml.Node and recursively decrypt nodes marked with the
+// `!crypto/age` YAML tag.
 func (w Wrapper) UnmarshalYAML(value *yaml.Node) error {
-	resolved, err := w.resolve(value)
+	decoded, err := w.decode(value)
 	if err != nil {
 		return err
 	}
 
-	return resolved.Decode(w.Value)
+	return decoded.Decode(w.Value)
 }
 
-func (w Wrapper) resolve(node *yaml.Node) (*yaml.Node, error) {
+func (w Wrapper) decode(node *yaml.Node) (*yaml.Node, error) {
+	if node == nil {
+		return nil, nil
+	}
+
 	// Recurse into sequence types
-	if node.Kind == yaml.SequenceNode || node.Kind == yaml.MappingNode {
+	if node.Kind == yaml.DocumentNode || node.Kind == yaml.SequenceNode || node.Kind == yaml.MappingNode {
 		var err error
 
 		if len(node.Content) > 0 {
 			for i := range node.Content {
-				node.Content[i], err = w.resolve(node.Content[i])
+				node.Content[i], err = w.decode(node.Content[i])
 				if err != nil {
 					return nil, err
 				}
@@ -53,8 +79,8 @@ func (w Wrapper) resolve(node *yaml.Node) (*yaml.Node, error) {
 
 	switch {
 	case node.Tag == YAMLTag:
-	case strings.HasPrefix(node.Tag, YAMLTag+":"):
-		attrStr := node.Tag[12:]
+	case strings.HasPrefix(node.Tag, YAMLTagPrefix):
+		attrStr := node.Tag[len(YAMLTagPrefix):]
 		attrs := strings.Split(attrStr, ",")
 
 		for _, attr := range attrs {
@@ -62,7 +88,7 @@ func (w Wrapper) resolve(node *yaml.Node) (*yaml.Node, error) {
 			switch lower {
 			case "doublequoted", "singlequoted", "literal", "folded", "flow":
 				if style != 0 {
-					return nil, fmt.Errorf("Can't use more than one style attribute: %s", attrStr)
+					return nil, fmt.Errorf("%w: %s", ErrMoreThanOneStyleAttribute, attrStr)
 				}
 				switch lower {
 				case "doublequoted":
@@ -79,16 +105,19 @@ func (w Wrapper) resolve(node *yaml.Node) (*yaml.Node, error) {
 			case "notag":
 				notag = true
 			default:
-				return nil, fmt.Errorf("Unknown attribute: %s", attrStr)
+				return nil, fmt.Errorf("%w: %s", ErrUnknownAttribute, attrStr)
 			}
 		}
 	default:
 		return node, nil
 	}
 
+	if w.ForceNoTag {
+		node.Tag = ""
+	}
+
 	// Check the absence of armored age header and footer
-	valueTrimmed := strings.TrimSpace(node.Value)
-	if !strings.HasPrefix(valueTrimmed, armor.Header) || !strings.HasSuffix(valueTrimmed, armor.Footer) {
+	if w.NoDecrypt || !isArmoredAgeFile(node.Value) {
 		return node, nil
 	}
 
@@ -104,7 +133,7 @@ func (w Wrapper) resolve(node *yaml.Node) (*yaml.Node, error) {
 	decryptedReader, err := age.Decrypt(armoredReader, w.Identities...)
 
 	if err != nil {
-		return nil, fmt.Errorf("age: %w", err)
+		return nil, fmt.Errorf("%w: %s", ErrUpstreamAgeError, err)
 	}
 
 	buf := new(bytes.Buffer)
@@ -117,8 +146,10 @@ func (w Wrapper) resolve(node *yaml.Node) (*yaml.Node, error) {
 	tempTag := node.Tag
 	node.SetString(buf.String())
 
-	if w.DiscardNoTag || !notag {
-		node.Tag = tempTag
+	if !w.ForceNoTag {
+		if w.DiscardNoTag || !notag {
+			node.Tag = tempTag
+		}
 	}
 
 	if style == 0 {
@@ -132,4 +163,63 @@ func (w Wrapper) resolve(node *yaml.Node) (*yaml.Node, error) {
 	}
 
 	return node, nil
+}
+
+// MarshalYAML recursively encrypts Value.
+func (w Wrapper) MarshalYAML() (interface{}, error) {
+	switch v := w.Value.(type) {
+	case *yaml.Node:
+		return w.encode(v)
+	default:
+		return nil, fmt.Errorf("%w: %#v", ErrUnsupportedValueType, v)
+	}
+}
+
+// marshalYAML is the internal implementation of MarshalYAML. We need the internal
+// implementation to be able to return *yaml.Node instead of interface{} because
+// the global MarshalYAML function needs to return an interface{} to comply with
+// the yaml.Marshaler interface.
+func (w Wrapper) encode(node *yaml.Node) (*yaml.Node, error) {
+	if node == nil {
+		return nil, nil
+	}
+
+	// Recurse into sequence types
+	if node.Kind == yaml.DocumentNode || node.Kind == yaml.SequenceNode || node.Kind == yaml.MappingNode {
+		var err error
+
+		if len(node.Content) > 0 {
+			for i := range node.Content {
+				node.Content[i], err = w.encode(node.Content[i])
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+
+		return node, nil
+	}
+
+	switch {
+	case node.Tag == YAMLTag:
+	case strings.HasPrefix(node.Tag, YAMLTagPrefix):
+	default:
+		return node, nil
+	}
+
+	if isArmoredAgeFile(node.Value) {
+		return node, nil
+	}
+
+	str := NewStringFromNode(node, w.Recipients)
+	nodeInterface, err := str.MarshalYAML()
+
+	return nodeInterface.(*yaml.Node), err
+}
+
+// isArmoredAgeFile checks whether the value starts with the AGE armor.Header
+// and ends with the AGE armor Footer.
+func isArmoredAgeFile(data string) bool {
+	trimmed := strings.TrimSpace(data)
+	return strings.HasPrefix(trimmed, armor.Header) && strings.HasSuffix(trimmed, armor.Footer)
 }
