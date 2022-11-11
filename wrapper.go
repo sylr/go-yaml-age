@@ -20,6 +20,8 @@ type Wrapper struct {
 	// DiscardNoTag will not honour NoTag when decrypting so you can re-encrypt
 	// with original tags.
 	DiscardNoTag bool
+	// NoDecrypt will leave encrypted data as-is.
+	NoDecrypt bool
 }
 
 // UnmarshalYAML takes yaml.Node and recursively decrypt data marked with the
@@ -88,7 +90,7 @@ func (w Wrapper) resolve(node *yaml.Node) (*yaml.Node, error) {
 
 	// Check the absence of armored age header and footer
 	valueTrimmed := strings.TrimSpace(node.Value)
-	if !strings.HasPrefix(valueTrimmed, armor.Header) || !strings.HasSuffix(valueTrimmed, armor.Footer) {
+	if w.NoDecrypt || !strings.HasPrefix(valueTrimmed, armor.Header) || !strings.HasSuffix(valueTrimmed, armor.Footer) {
 		return node, nil
 	}
 

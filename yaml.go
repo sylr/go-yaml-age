@@ -12,21 +12,45 @@ const (
 	YAMLTag = "!crypto/age"
 )
 
+type marshallerOptions struct {
+	ignoreEncrypted bool
+}
+
+// MarshalYAMLOption is an option for MarshalYAML.
+type MarshalYAMLOption func(*marshallerOptions)
+
+// NoReencrypt tells MarshalYAML to not encrypt tags that are already encrypted. It determines this by checking if the
+// tag starts with armor.Header ("-----BEGIN AGE ENCRYPTED FILE-----").
+func NoReencrypt() MarshalYAMLOption {
+	return func(m *marshallerOptions) {
+		m.ignoreEncrypted = true
+	}
+}
+
 // MarshalYAML takes a *yaml.Node and []age.Recipient and recursively encrypt/marshal the Values.
-func MarshalYAML(node *yaml.Node, recipients []age.Recipient) (*yaml.Node, error) {
+func MarshalYAML(node *yaml.Node, recipients []age.Recipient, options ...MarshalYAMLOption) (*yaml.Node, error) {
+
+	opts := &marshallerOptions{}
+	for _, o := range options {
+		o(opts)
+	}
 	// Recurse into sequence types
 	if node.Kind == yaml.SequenceNode || node.Kind == yaml.MappingNode {
 		var err error
 
 		if len(node.Content) > 0 {
 			for i := range node.Content {
-				node.Content[i], err = MarshalYAML(node.Content[i], recipients)
+				node.Content[i], err = MarshalYAML(node.Content[i], recipients, options...)
 				if err != nil {
 					return nil, err
 				}
 			}
 		}
 
+		return node, nil
+	}
+
+	if opts.ignoreEncrypted {
 		return node, nil
 	}
 

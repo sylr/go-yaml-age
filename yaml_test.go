@@ -870,6 +870,53 @@ dup: *passwd`),
 			})
 
 			input = reencoded.String()
+
+			// try again ignoring encrypted values and make sure we get the same result
+
+			buf = bytes.NewBufferString(input)
+			node = yaml.Node{}
+
+			w = Wrapper{
+				Value:        &node,
+				DiscardNoTag: test.DiscardNoTag,
+				NoDecrypt:    true,
+			}
+
+			actual = new(bytes.Buffer)
+			decoder = yaml.NewDecoder(buf)
+			encoder = yaml.NewEncoder(actual)
+			encoder.SetIndent(2)
+
+			// Load YAML
+			err = decoder.Decode(&w)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Decode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			err = encoder.Encode(&node)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			_, err = MarshalYAML(&node, []age.Recipient{rec}, NoReencrypt())
+
+			Convey(fmt.Sprintf("%s (pass #%d): MarshalYAML should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			reencoded = new(bytes.Buffer)
+			reencoder = yaml.NewEncoder(reencoded)
+			err = reencoder.Encode(&node)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should match original", test.Description, i), t, FailureHalts, func() {
+				So(reencoded.String(), ShouldEqual, input)
+			})
 		}
 	}
 }
