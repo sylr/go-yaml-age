@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"filippo.io/age"
+	"filippo.io/age/armor"
 	"sylr.dev/yaml/v3"
 )
 
@@ -50,14 +51,14 @@ func MarshalYAML(node *yaml.Node, recipients []age.Recipient, options ...Marshal
 		return node, nil
 	}
 
-	if opts.ignoreEncrypted {
-		return node, nil
-	}
-
 	switch {
 	case node.Tag == YAMLTag:
 	case strings.HasPrefix(node.Tag, YAMLTag+":"):
 	default:
+		return node, nil
+	}
+
+	if opts.ignoreEncrypted && strings.HasPrefix(strings.TrimSpace(node.Value), armor.Header) {
 		return node, nil
 	}
 

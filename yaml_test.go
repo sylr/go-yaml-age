@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -472,6 +473,91 @@ func TestNoRecipientMarshal(t *testing.T) {
 	Convey("Encode should return error", t, FailureHalts, func() {
 		So(err, ShouldBeError)
 	})
+}
+
+func TestNoReencrypt(t *testing.T) {
+	t.Parallel()
+	input := `
+foo: !crypto/age bar
+baz: plain text
+`
+	identities, recipients := getKeysFromFiles(t)
+	var node yaml.Node
+
+	//actual := new(bytes.Buffer)
+	decoder := yaml.NewDecoder(bytes.NewBufferString(input))
+	//encoder := yaml.NewEncoder(actual)
+	err := decoder.Decode(&Wrapper{
+		Value: &node,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := MarshalYAML(&node, recipients)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := yaml.Marshal(n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded := string(b)
+	input = fmt.Sprintf("%s\nqux: !crypto/age quux", b)
+	decoder = yaml.NewDecoder(bytes.NewBufferString(input))
+	node = yaml.Node{}
+	err = decoder.Decode(&Wrapper{
+		Value:     &node,
+		NoDecrypt: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	options := []MarshalYAMLOption{NoReencrypt()}
+	n, err = MarshalYAML(&node, recipients, options...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err = yaml.Marshal(n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(b), decoded) {
+		t.Fatalf("expected %s to start with %s", string(b), decoded)
+	}
+	wantPrefix := "qux: !crypto/age |-\n    -----BEGIN AGE ENCRYPTED FILE-----"
+	if !strings.HasPrefix(strings.TrimPrefix(string(b), decoded), wantPrefix) {
+		t.Fatalf("expected %s to start with %s", strings.TrimPrefix(string(b), decoded), wantPrefix)
+	}
+	node = yaml.Node{}
+	err = yaml.Unmarshal(b, &Wrapper{
+		Value:      &node,
+		Identities: identities,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder = yaml.NewDecoder(bytes.NewBuffer(b))
+	err = decoder.Decode(&Wrapper{
+		Value:      &node,
+		Identities: identities,
+	})
+	out := new(bytes.Buffer)
+	encoder := yaml.NewEncoder(out)
+	err = encoder.Encode(&node)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = encoder.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `foo: !crypto/age bar
+baz: plain text
+qux: !crypto/age quux
+`
+	if out.String() != want {
+		t.Fatalf("expected %s to equal %s", out.String(), want)
+	}
 }
 
 func TestDecodeEncodeMarshal(t *testing.T) {
