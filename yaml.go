@@ -15,32 +15,32 @@ const (
 
 // MarshalYAML takes a *yaml.Node and []age.Recipient and recursively encrypt/marshal the Values.
 func MarshalYAML(node *yaml.Node, recipients []age.Recipient) (*yaml.Node, error) {
-	return Marshaller{
+	return Marshaler{
 		Node:       node,
 		Recipients: recipients,
 	}.marshalYAML()
 }
 
-// Marshaller marshals a *yaml.Node encrypting values with age.
-type Marshaller struct {
+// Marshaler marshals a *yaml.Node encrypting values with age.
+type Marshaler struct {
 	// Node holds the *yaml.Node that will be encrypted with the Recipients. Node must have been decoded with
 	// Wrapper.UnmarshalYAML.
 	// Warning: Node is modified in place.
 	Node *yaml.Node
 	// Recipients that will be used for encrypting.
 	Recipients []age.Recipient
-	// NoReencrypt tells Marshaller to not encrypt values that are already armored age files.
+	// NoReencrypt tells Marshaler to not encrypt values that are already armored age files.
 	NoReencrypt bool
 }
 
 // MarshalYAML implements the yaml.Marshaler interface.
-func (m Marshaller) MarshalYAML() (interface{}, error) {
+func (m Marshaler) MarshalYAML() (interface{}, error) {
 	return m.marshalYAML()
 }
 
 // marshalYAML is the internal implementation of MarshalYAML. We need the internal implementation to be able to return
 // *yaml.Node instead of interface{} because the global MarshalYAML function needs to return *yaml.Node.
-func (m Marshaller) marshalYAML() (*yaml.Node, error) {
+func (m Marshaler) marshalYAML() (*yaml.Node, error) {
 	node := m.Node
 	recipients := m.Recipients
 	if node == nil {
@@ -52,7 +52,7 @@ func (m Marshaller) marshalYAML() (*yaml.Node, error) {
 
 		if len(node.Content) > 0 {
 			for i := range node.Content {
-				node.Content[i], err = Marshaller{
+				node.Content[i], err = Marshaler{
 					Node:        node.Content[i],
 					Recipients:  recipients,
 					NoReencrypt: m.NoReencrypt,

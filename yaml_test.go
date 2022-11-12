@@ -902,7 +902,7 @@ dup: *passwd`),
 				So(err, ShouldBeNil)
 			})
 
-			b, err := yaml.Marshal(&Marshaller{
+			b, err := yaml.Marshal(&Marshaler{
 				Node:        &node,
 				NoReencrypt: true,
 			})
@@ -1043,7 +1043,7 @@ baz: plain text
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := yaml.Marshal(&Marshaller{
+	b, err := yaml.Marshal(&Marshaler{
 		Node:       &node,
 		Recipients: recipients,
 	})
@@ -1060,7 +1060,7 @@ baz: plain text
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err = yaml.Marshal(&Marshaller{
+	b, err = yaml.Marshal(&Marshaler{
 		Node:        &node,
 		Recipients:  recipients,
 		NoReencrypt: true,
