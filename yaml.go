@@ -20,8 +20,8 @@ type marshallerOptions struct {
 // MarshalYAMLOption is an option for MarshalYAML.
 type MarshalYAMLOption func(*marshallerOptions)
 
-// NoReencrypt tells MarshalYAML to not encrypt tags that are already encrypted. It determines this by checking if the
-// tag starts with armor.Header ("-----BEGIN AGE ENCRYPTED FILE-----").
+// NoReencrypt tells MarshalYAML to not encrypt values that are already encrypted. It determines this by checking if the
+// value starts with armor.Header ("-----BEGIN AGE ENCRYPTED FILE-----").
 func NoReencrypt() MarshalYAMLOption {
 	return func(m *marshallerOptions) {
 		m.ignoreEncrypted = true
