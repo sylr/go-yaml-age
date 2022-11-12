@@ -529,6 +529,9 @@ baz: plain text
 		Value:      &node,
 		Identities: identities,
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	out := new(bytes.Buffer)
 	encoder := yaml.NewEncoder(out)
 	err = encoder.Encode(&node)
