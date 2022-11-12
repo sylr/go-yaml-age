@@ -13,26 +13,38 @@ const (
 	YAMLTag = "!crypto/age"
 )
 
-type marshalYAMLOptions struct {
-	noReencrypt bool
-}
-
-// MarshalYAMLOption is an option for MarshalYAML.
-type MarshalYAMLOption func(*marshalYAMLOptions)
-
-// NoReencrypt tells MarshalYAML to not encrypt values that are already encrypted. It determines this by checking if the
-// value starts with armor.Header ("-----BEGIN AGE ENCRYPTED FILE-----").
-func NoReencrypt() MarshalYAMLOption {
-	return func(m *marshalYAMLOptions) {
-		m.noReencrypt = true
-	}
-}
-
 // MarshalYAML takes a *yaml.Node and []age.Recipient and recursively encrypt/marshal the Values.
-func MarshalYAML(node *yaml.Node, recipients []age.Recipient, options ...MarshalYAMLOption) (*yaml.Node, error) {
-	opts := &marshalYAMLOptions{}
-	for _, o := range options {
-		o(opts)
+func MarshalYAML(node *yaml.Node, recipients []age.Recipient) (*yaml.Node, error) {
+	return Marshaller{
+		Node:       node,
+		Recipients: recipients,
+	}.marshalYAML()
+}
+
+// Marshaller marshals a *yaml.Node encrypting values with age.
+type Marshaller struct {
+	// Node holds the *yaml.Node that will be encrypted with the Recipients. Node must have been decoded with
+	// Wrapper.UnmarshalYAML.
+	// Warning: Node is modified in place.
+	Node *yaml.Node
+	// Recipients that will be used for encrypting.
+	Recipients []age.Recipient
+	// NoReencrypt tells Marshaller to not encrypt values that are already armored age files.
+	NoReencrypt bool
+}
+
+// MarshalYAML implements the yaml.Marshaler interface.
+func (m Marshaller) MarshalYAML() (interface{}, error) {
+	return m.marshalYAML()
+}
+
+// marshalYAML is the internal implementation of MarshalYAML. We need the internal implementation to be able to return
+// *yaml.Node instead of interface{} because the global MarshalYAML function needs to return *yaml.Node.
+func (m Marshaller) marshalYAML() (*yaml.Node, error) {
+	node := m.Node
+	recipients := m.Recipients
+	if node == nil {
+		return nil, nil
 	}
 	// Recurse into sequence types
 	if node.Kind == yaml.SequenceNode || node.Kind == yaml.MappingNode {
@@ -40,7 +52,11 @@ func MarshalYAML(node *yaml.Node, recipients []age.Recipient, options ...Marshal
 
 		if len(node.Content) > 0 {
 			for i := range node.Content {
-				node.Content[i], err = MarshalYAML(node.Content[i], recipients, options...)
+				node.Content[i], err = Marshaller{
+					Node:        node.Content[i],
+					Recipients:  recipients,
+					NoReencrypt: m.NoReencrypt,
+				}.marshalYAML()
 				if err != nil {
 					return nil, err
 				}
@@ -57,7 +73,7 @@ func MarshalYAML(node *yaml.Node, recipients []age.Recipient, options ...Marshal
 		return node, nil
 	}
 
-	if opts.noReencrypt && strings.HasPrefix(strings.TrimSpace(node.Value), armor.Header) {
+	if m.NoReencrypt && isArmoredAgeFile(node.Value) {
 		return node, nil
 	}
 
@@ -65,4 +81,11 @@ func MarshalYAML(node *yaml.Node, recipients []age.Recipient, options ...Marshal
 	nodeInterface, err := str.MarshalYAML()
 
 	return nodeInterface.(*yaml.Node), err
+}
+
+// isArmoredAgeFile checks whether the value starts with armor.Header ("-----BEGIN AGE ENCRYPTED FILE-----") and ends
+// with armor.Footer ("-----END AGE ENCRYPTED FILE-----").
+func isArmoredAgeFile(data string) bool {
+	trimmed := strings.TrimSpace(data)
+	return strings.HasPrefix(trimmed, armor.Header) && strings.HasSuffix(trimmed, armor.Footer)
 }

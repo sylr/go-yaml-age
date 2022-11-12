@@ -463,99 +463,15 @@ func TestNoRecipientMarshal(t *testing.T) {
 	})
 }
 
-func TestNoReencrypt(t *testing.T) {
-	input := `
-foo: !crypto/age bar
-baz: plain text
-`
-	identities, recipients := getKeysFromFiles(t)
-	var node yaml.Node
-
-	decoder := yaml.NewDecoder(bytes.NewBufferString(input))
-	err := decoder.Decode(&Wrapper{
-		Value: &node,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	n, err := MarshalYAML(&node, recipients)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := yaml.Marshal(n)
-	if err != nil {
-		t.Fatal(err)
-	}
-	decoded := string(b)
-	input = fmt.Sprintf("%s\nqux: !crypto/age quux", b)
-	decoder = yaml.NewDecoder(bytes.NewBufferString(input))
-	node = yaml.Node{}
-	err = decoder.Decode(&Wrapper{
-		Value:     &node,
-		NoDecrypt: true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	options := []MarshalYAMLOption{NoReencrypt()}
-	n, err = MarshalYAML(&node, recipients, options...)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err = yaml.Marshal(n)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.HasPrefix(string(b), decoded) {
-		t.Fatalf("expected %s to start with %s", string(b), decoded)
-	}
-	wantPrefix := "qux: !crypto/age |-\n    -----BEGIN AGE ENCRYPTED FILE-----"
-	if !strings.HasPrefix(strings.TrimPrefix(string(b), decoded), wantPrefix) {
-		t.Fatalf("expected %s to start with %s", strings.TrimPrefix(string(b), decoded), wantPrefix)
-	}
-	node = yaml.Node{}
-	err = yaml.Unmarshal(b, &Wrapper{
-		Value:      &node,
-		Identities: identities,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	decoder = yaml.NewDecoder(bytes.NewBuffer(b))
-	err = decoder.Decode(&Wrapper{
-		Value:      &node,
-		Identities: identities,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	out := new(bytes.Buffer)
-	encoder := yaml.NewEncoder(out)
-	err = encoder.Encode(&node)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = encoder.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := `foo: !crypto/age bar
-baz: plain text
-qux: !crypto/age quux
-`
-	if out.String() != want {
-		t.Fatalf("expected %s to equal %s", out.String(), want)
-	}
-}
-
 func TestDecodeEncodeMarshal(t *testing.T) {
-	tests := []struct {
+	type testData struct {
 		Description  string
 		Assertion    func(interface{}, ...interface{}) string
 		Input        string
 		Expected     string
 		DiscardNoTag bool
-	}{
+	}
+	tests := []testData{
 		{
 			Description: "No style defined",
 			Assertion:   ShouldEqual,
@@ -905,7 +821,7 @@ dup: *passwd`),
 		t.Fatal(err)
 	}
 
-	for _, test := range tests {
+	runTest := func(t *testing.T, test testData) {
 		input := test.Input
 		for i := 1; i < 3; i++ {
 			buf := bytes.NewBufferString(input)
@@ -986,24 +902,26 @@ dup: *passwd`),
 				So(err, ShouldBeNil)
 			})
 
-			_, err = MarshalYAML(&node, []age.Recipient{rec}, NoReencrypt())
+			b, err := yaml.Marshal(&Marshaller{
+				Node:        &node,
+				NoReencrypt: true,
+			})
 
-			Convey(fmt.Sprintf("%s (pass #%d): MarshalYAML should not return error", test.Description, i), t, FailureHalts, func() {
+			Convey(fmt.Sprintf("%s (pass #%d): Marshal should not return error", test.Description, i), t, FailureHalts, func() {
 				So(err, ShouldBeNil)
 			})
 
-			reencoded = new(bytes.Buffer)
-			reencoder = yaml.NewEncoder(reencoded)
-			err = reencoder.Encode(&node)
-
-			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
-				So(err, ShouldBeNil)
-			})
-
-			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should match original", test.Description, i), t, FailureHalts, func() {
-				So(reencoded.String(), ShouldEqual, input)
+			Convey(fmt.Sprintf("%s (pass #%d): compare outputs", test.Description, i), t, func() {
+				So(string(b), ShouldEqual, input)
 			})
 		}
+	}
+
+	for _, test := range tests {
+		t.Run(test.Description, func(t *testing.T) {
+			t.Parallel()
+			runTest(t, test)
+		})
 	}
 }
 
@@ -1108,5 +1026,72 @@ func TestIncorrectBehaviours(t *testing.T) {
 
 			input = reencoded.String()
 		}
+	}
+}
+
+func TestNoReencrypt(t *testing.T) {
+	input := `
+foo: !crypto/age bar
+baz: plain text
+`
+	identities, recipients := getKeysFromFiles(t)
+	var node yaml.Node
+
+	err := yaml.Unmarshal([]byte(input), &Wrapper{
+		Value: &node,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := yaml.Marshal(&Marshaller{
+		Node:       &node,
+		Recipients: recipients,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded := string(b)
+	input = fmt.Sprintf("%s\nqux: !crypto/age quux", b)
+	node = yaml.Node{}
+	err = yaml.NewDecoder(strings.NewReader(input)).Decode(&Wrapper{
+		Value:     &node,
+		NoDecrypt: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err = yaml.Marshal(&Marshaller{
+		Node:        &node,
+		Recipients:  recipients,
+		NoReencrypt: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(b), decoded) {
+		t.Fatalf("expected %s to start with %s", string(b), decoded)
+	}
+	wantPrefix := "qux: !crypto/age |-\n    -----BEGIN AGE ENCRYPTED FILE-----"
+	if !strings.HasPrefix(strings.TrimPrefix(string(b), decoded), wantPrefix) {
+		t.Fatalf("expected %s to start with %s", strings.TrimPrefix(string(b), decoded), wantPrefix)
+	}
+	node = yaml.Node{}
+	err = yaml.Unmarshal(b, &Wrapper{
+		Value:      &node,
+		Identities: identities,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err = yaml.Marshal(&node)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `foo: !crypto/age bar
+baz: plain text
+qux: !crypto/age quux
+`
+	if string(b) != want {
+		t.Fatalf("expected %s to equal %s", string(b), want)
 	}
 }

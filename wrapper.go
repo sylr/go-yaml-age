@@ -89,8 +89,7 @@ func (w Wrapper) resolve(node *yaml.Node) (*yaml.Node, error) {
 	}
 
 	// Check the absence of armored age header and footer
-	valueTrimmed := strings.TrimSpace(node.Value)
-	if w.NoDecrypt || !strings.HasPrefix(valueTrimmed, armor.Header) || !strings.HasSuffix(valueTrimmed, armor.Footer) {
+	if w.NoDecrypt || !isArmoredAgeFile(node.Value) {
 		return node, nil
 	}
 
