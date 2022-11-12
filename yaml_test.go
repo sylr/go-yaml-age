@@ -464,7 +464,6 @@ func TestNoRecipientMarshal(t *testing.T) {
 }
 
 func TestNoReencrypt(t *testing.T) {
-	t.Parallel()
 	input := `
 foo: !crypto/age bar
 baz: plain text
@@ -472,9 +471,7 @@ baz: plain text
 	identities, recipients := getKeysFromFiles(t)
 	var node yaml.Node
 
-	//actual := new(bytes.Buffer)
 	decoder := yaml.NewDecoder(bytes.NewBufferString(input))
-	//encoder := yaml.NewEncoder(actual)
 	err := decoder.Decode(&Wrapper{
 		Value: &node,
 	})
