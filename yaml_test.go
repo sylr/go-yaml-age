@@ -52,7 +52,6 @@ func getKeysFromFiles(t *testing.T) ([]age.Identity, []age.Recipient) {
 }
 
 func TestSimpleData(t *testing.T) {
-	t.Parallel()
 	ids, recs := getKeysFromFiles(t)
 
 	// ArmoredStruct based
@@ -98,7 +97,6 @@ func TestSimpleData(t *testing.T) {
 }
 
 func TestAnonymousStruct(t *testing.T) {
-	t.Parallel()
 	ids, _ := getKeysFromFiles(t)
 
 	// Open source yaml
@@ -152,7 +150,6 @@ type complexStruct struct {
 }
 
 func TestComplexData(t *testing.T) {
-	t.Parallel()
 	ids, recs := getKeysFromFiles(t)
 
 	// -- test 1 ---------------------------------------------------------------
@@ -277,7 +274,6 @@ func TestComplexData(t *testing.T) {
 }
 
 func TestUnlmarshallingInputDocument(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		Description string
 		Assertion   func(interface{}, ...interface{}) string
@@ -319,44 +315,40 @@ password: !crypto/age ThisIsMyReallyEncryptedPassword
 	}
 
 	for _, test := range tests {
-		t.Run(test.Description, func(t *testing.T) {
-			t.Parallel()
-			buf := bytes.NewBufferString(test.Input)
-			actual := bytes.NewBuffer(nil)
-			node := yaml.Node{}
+		buf := bytes.NewBufferString(test.Input)
+		actual := bytes.NewBuffer(nil)
+		node := yaml.Node{}
 
-			w := Wrapper{
-				Value:      &node,
-				Identities: []age.Identity{id},
-			}
-			decoder := yaml.NewDecoder(buf)
-			encoder := yaml.NewEncoder(actual)
+		w := Wrapper{
+			Value:      &node,
+			Identities: []age.Identity{id},
+		}
+		decoder := yaml.NewDecoder(buf)
+		encoder := yaml.NewEncoder(actual)
 
-			for {
-				err = decoder.Decode(&w)
-				if err == io.EOF {
-					break
-				} else {
-					Convey(test.Description, t, func() {
-						So(err, test.Assertion)
-					})
-				}
-
-				err := encoder.Encode(&node)
+		for {
+			err = decoder.Decode(&w)
+			if err == io.EOF {
+				break
+			} else {
 				Convey(test.Description, t, func() {
-					So(err, ShouldBeNil)
+					So(err, test.Assertion)
 				})
 			}
 
+			err := encoder.Encode(&node)
 			Convey(test.Description, t, func() {
-				So(actual.String(), ShouldEqual, test.Expected)
+				So(err, ShouldBeNil)
 			})
+		}
+
+		Convey(test.Description, t, func() {
+			So(actual.String(), ShouldEqual, test.Expected)
 		})
 	}
 }
 
 func TestUnlmarshallingBogusEncryptedData(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		Description string
 		Assertion   func(interface{}, ...interface{}) string
@@ -433,27 +425,23 @@ func TestUnlmarshallingBogusEncryptedData(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(test.Description, func(t *testing.T) {
-			t.Parallel()
-			buf := bytes.NewBufferString(test.Input)
-			node := yaml.Node{}
+		buf := bytes.NewBufferString(test.Input)
+		node := yaml.Node{}
 
-			w := Wrapper{
-				Value:      &node,
-				Identities: []age.Identity{id},
-			}
-			decoder := yaml.NewDecoder(buf)
-			err = decoder.Decode(&w)
+		w := Wrapper{
+			Value:      &node,
+			Identities: []age.Identity{id},
+		}
+		decoder := yaml.NewDecoder(buf)
+		err = decoder.Decode(&w)
 
-			Convey(test.Description, t, func() {
-				So(err, test.Assertion)
-			})
+		Convey(test.Description, t, func() {
+			So(err, test.Assertion)
 		})
 	}
 }
 
 func TestNoRecipientMarshal(t *testing.T) {
-	t.Parallel()
 	d1 := complexStruct{
 		RegularData: []string{
 			"this is the first pwet",
@@ -561,7 +549,6 @@ qux: !crypto/age quux
 }
 
 func TestDecodeEncodeMarshal(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		Description  string
 		Assertion    func(interface{}, ...interface{}) string
@@ -919,114 +906,110 @@ dup: *passwd`),
 	}
 
 	for _, test := range tests {
-		t.Run(test.Description, func(t *testing.T) {
-			t.Parallel()
-			input := test.Input
-			for i := 1; i < 3; i++ {
-				buf := bytes.NewBufferString(input)
-				node := yaml.Node{}
+		input := test.Input
+		for i := 1; i < 3; i++ {
+			buf := bytes.NewBufferString(input)
+			node := yaml.Node{}
 
-				w := Wrapper{
-					Value:        &node,
-					Identities:   []age.Identity{id},
-					DiscardNoTag: test.DiscardNoTag,
-				}
-
-				actual := new(bytes.Buffer)
-				decoder := yaml.NewDecoder(buf)
-				encoder := yaml.NewEncoder(actual)
-				encoder.SetIndent(2)
-
-				// Load YAML
-				err = decoder.Decode(&w)
-
-				Convey(fmt.Sprintf("%s (pass #%d): Decode should not return error", test.Description, i), t, FailureHalts, func() {
-					So(err, ShouldBeNil)
-				})
-
-				// Marshall decrypted values
-				err = encoder.Encode(&node)
-
-				Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
-					So(err, ShouldBeNil)
-				})
-
-				Convey(fmt.Sprintf("%s (pass #%d): compare outputs", test.Description, i), t, func() {
-					So(actual.String(), test.Assertion, test.Expected)
-				})
-
-				// Marshall encrypted values
-				_, err := MarshalYAML(&node, []age.Recipient{rec})
-
-				Convey(fmt.Sprintf("%s (pass #%d): MarshalYAML should not return error", test.Description, i), t, FailureHalts, func() {
-					So(err, ShouldBeNil)
-				})
-
-				reencoded := new(bytes.Buffer)
-				reencoder := yaml.NewEncoder(reencoded)
-				err = reencoder.Encode(&node)
-
-				Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
-					So(err, ShouldBeNil)
-				})
-
-				input = reencoded.String()
-
-				// try again ignoring encrypted values and make sure we get the same result
-
-				buf = bytes.NewBufferString(input)
-				node = yaml.Node{}
-
-				w = Wrapper{
-					Value:        &node,
-					DiscardNoTag: test.DiscardNoTag,
-					NoDecrypt:    true,
-				}
-
-				actual = new(bytes.Buffer)
-				decoder = yaml.NewDecoder(buf)
-				encoder = yaml.NewEncoder(actual)
-				encoder.SetIndent(2)
-
-				// Load YAML
-				err = decoder.Decode(&w)
-
-				Convey(fmt.Sprintf("%s (pass #%d): Decode should not return error", test.Description, i), t, FailureHalts, func() {
-					So(err, ShouldBeNil)
-				})
-
-				err = encoder.Encode(&node)
-
-				Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
-					So(err, ShouldBeNil)
-				})
-
-				_, err = MarshalYAML(&node, []age.Recipient{rec}, NoReencrypt())
-
-				Convey(fmt.Sprintf("%s (pass #%d): MarshalYAML should not return error", test.Description, i), t, FailureHalts, func() {
-					So(err, ShouldBeNil)
-				})
-
-				reencoded = new(bytes.Buffer)
-				reencoder = yaml.NewEncoder(reencoded)
-				err = reencoder.Encode(&node)
-
-				Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
-					So(err, ShouldBeNil)
-				})
-
-				Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should match original", test.Description, i), t, FailureHalts, func() {
-					So(reencoded.String(), ShouldEqual, input)
-				})
+			w := Wrapper{
+				Value:        &node,
+				Identities:   []age.Identity{id},
+				DiscardNoTag: test.DiscardNoTag,
 			}
-		})
+
+			actual := new(bytes.Buffer)
+			decoder := yaml.NewDecoder(buf)
+			encoder := yaml.NewEncoder(actual)
+			encoder.SetIndent(2)
+
+			// Load YAML
+			err = decoder.Decode(&w)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Decode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			// Marshall decrypted values
+			err = encoder.Encode(&node)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey(fmt.Sprintf("%s (pass #%d): compare outputs", test.Description, i), t, func() {
+				So(actual.String(), test.Assertion, test.Expected)
+			})
+
+			// Marshall encrypted values
+			_, err := MarshalYAML(&node, []age.Recipient{rec})
+
+			Convey(fmt.Sprintf("%s (pass #%d): MarshalYAML should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			reencoded := new(bytes.Buffer)
+			reencoder := yaml.NewEncoder(reencoded)
+			err = reencoder.Encode(&node)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			input = reencoded.String()
+
+			// try again ignoring encrypted values and make sure we get the same result
+
+			buf = bytes.NewBufferString(input)
+			node = yaml.Node{}
+
+			w = Wrapper{
+				Value:        &node,
+				DiscardNoTag: test.DiscardNoTag,
+				NoDecrypt:    true,
+			}
+
+			actual = new(bytes.Buffer)
+			decoder = yaml.NewDecoder(buf)
+			encoder = yaml.NewEncoder(actual)
+			encoder.SetIndent(2)
+
+			// Load YAML
+			err = decoder.Decode(&w)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Decode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			err = encoder.Encode(&node)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			_, err = MarshalYAML(&node, []age.Recipient{rec}, NoReencrypt())
+
+			Convey(fmt.Sprintf("%s (pass #%d): MarshalYAML should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			reencoded = new(bytes.Buffer)
+			reencoder = yaml.NewEncoder(reencoded)
+			err = reencoder.Encode(&node)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should match original", test.Description, i), t, FailureHalts, func() {
+				So(reencoded.String(), ShouldEqual, input)
+			})
+		}
 	}
 }
 
 // TestIncorrectBehaviours defines a series of tests that produce known incorrect
 // behaviours that should be fixed
 func TestIncorrectBehaviours(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		Description  string
 		Assertion    func(interface{}, ...interface{}) string
@@ -1055,78 +1038,75 @@ func TestIncorrectBehaviours(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(test.Description, func(t *testing.T) {
-			t.Parallel()
-			input := test.Input
-			for i := 1; i < 3; i++ {
-				buf := bytes.NewBufferString(input)
-				node := yaml.Node{}
+		input := test.Input
+		for i := 1; i < 3; i++ {
+			buf := bytes.NewBufferString(input)
+			node := yaml.Node{}
 
-				w := Wrapper{
-					Value:        &node,
-					Identities:   []age.Identity{id},
-					DiscardNoTag: test.DiscardNoTag,
-				}
-
-				// Load YAML
-				decoder := yaml.NewDecoder(buf)
-				err = decoder.Decode(&w)
-
-				Convey(fmt.Sprintf("%s (pass #%d): Decode should not return error", test.Description, i), t, FailureHalts, func() {
-					So(err, ShouldBeNil)
-				})
-
-				// Encrypt decrypted values
-				mnode, err := MarshalYAML(&node, []age.Recipient{rec})
-
-				Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
-					So(err, ShouldBeNil)
-				})
-
-				// Marshal
-				actual := new(bytes.Buffer)
-				encoder := yaml.NewEncoder(actual)
-				encoder.SetIndent(2)
-				err = encoder.Encode(mnode)
-
-				Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
-					So(err, ShouldBeNil)
-				})
-
-				// Re-decode
-				rebuf := bytes.NewBuffer(actual.Bytes())
-				renode := yaml.Node{}
-
-				rew := Wrapper{
-					Value:        &renode,
-					Identities:   []age.Identity{id},
-					DiscardNoTag: test.DiscardNoTag,
-				}
-
-				redecoder := yaml.NewDecoder(rebuf)
-				err = redecoder.Decode(&rew)
-
-				Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
-					So(err, ShouldBeNil)
-				})
-
-				// Re-marshal
-				reencoded := new(bytes.Buffer)
-				reencoder := yaml.NewEncoder(reencoded)
-				reencoder.SetIndent(2)
-
-				err = reencoder.Encode(&renode)
-
-				Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
-					So(err, ShouldBeNil)
-				})
-
-				Convey(fmt.Sprintf("%s (pass #%d): compare outputs", test.Description, i), t, func() {
-					So(reencoded.String(), test.Assertion, test.Expected)
-				})
-
-				input = reencoded.String()
+			w := Wrapper{
+				Value:        &node,
+				Identities:   []age.Identity{id},
+				DiscardNoTag: test.DiscardNoTag,
 			}
-		})
+
+			// Load YAML
+			decoder := yaml.NewDecoder(buf)
+			err = decoder.Decode(&w)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Decode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			// Encrypt decrypted values
+			mnode, err := MarshalYAML(&node, []age.Recipient{rec})
+
+			Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			// Marshal
+			actual := new(bytes.Buffer)
+			encoder := yaml.NewEncoder(actual)
+			encoder.SetIndent(2)
+			err = encoder.Encode(mnode)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			// Re-decode
+			rebuf := bytes.NewBuffer(actual.Bytes())
+			renode := yaml.Node{}
+
+			rew := Wrapper{
+				Value:        &renode,
+				Identities:   []age.Identity{id},
+				DiscardNoTag: test.DiscardNoTag,
+			}
+
+			redecoder := yaml.NewDecoder(rebuf)
+			err = redecoder.Decode(&rew)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			// Re-marshal
+			reencoded := new(bytes.Buffer)
+			reencoder := yaml.NewEncoder(reencoded)
+			reencoder.SetIndent(2)
+
+			err = reencoder.Encode(&renode)
+
+			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey(fmt.Sprintf("%s (pass #%d): compare outputs", test.Description, i), t, func() {
+				So(reencoded.String(), test.Assertion, test.Expected)
+			})
+
+			input = reencoded.String()
+		}
 	}
 }
