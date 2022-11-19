@@ -36,6 +36,10 @@ func (w Wrapper) UnmarshalYAML(value *yaml.Node) error {
 }
 
 func (w Wrapper) resolve(node *yaml.Node) (*yaml.Node, error) {
+	if node == nil {
+		return nil, nil
+	}
+
 	// Recurse into sequence types
 	if node.Kind == yaml.SequenceNode || node.Kind == yaml.MappingNode {
 		var err error

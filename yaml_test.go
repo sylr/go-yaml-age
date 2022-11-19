@@ -903,8 +903,7 @@ dup: *passwd`),
 			})
 
 			b, err := yaml.Marshal(&Marshaler{
-				Node:        &node,
-				NoReencrypt: true,
+				node: &node,
 			})
 
 			Convey(fmt.Sprintf("%s (pass #%d): Marshal should not return error", test.Description, i), t, FailureHalts, func() {
@@ -1044,7 +1043,7 @@ baz: plain text
 		t.Fatal(err)
 	}
 	b, err := yaml.Marshal(&Marshaler{
-		Node:       &node,
+		node:       &node,
 		Recipients: recipients,
 	})
 	if err != nil {
@@ -1061,9 +1060,8 @@ baz: plain text
 		t.Fatal(err)
 	}
 	b, err = yaml.Marshal(&Marshaler{
-		Node:        &node,
-		Recipients:  recipients,
-		NoReencrypt: true,
+		node:       &node,
+		Recipients: recipients,
 	})
 	if err != nil {
 		t.Fatal(err)
