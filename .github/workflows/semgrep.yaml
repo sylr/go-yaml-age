@@ -9,6 +9,7 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
+
     - name: Semgrep
       id: semgrep
       uses: returntocorp/semgrep-action@v1
