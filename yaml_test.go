@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -130,7 +129,7 @@ func TestAnonymousStruct(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	lipsumBuf, err := ioutil.ReadAll(lipsumFile)
+	lipsumBuf, err := io.ReadAll(lipsumFile)
 
 	if err != nil {
 		t.Fatal(err)
