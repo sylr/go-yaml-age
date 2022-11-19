@@ -925,7 +925,7 @@ dup: *passwd`),
 }
 
 // TestIncorrectBehaviours defines a series of tests that produce known incorrect
-// behaviours that should be fixed
+// behaviours that should be fixed.
 func TestIncorrectBehaviours(t *testing.T) {
 	tests := []struct {
 		Description  string
@@ -1004,7 +1004,7 @@ func TestIncorrectBehaviours(t *testing.T) {
 			redecoder := yaml.NewDecoder(rebuf)
 			err = redecoder.Decode(&rew)
 
-			Convey(fmt.Sprintf("%s (pass #%d): Re-Encode should not return error", test.Description, i), t, FailureHalts, func() {
+			Convey(fmt.Sprintf("%s (pass #%d): Re-Decode should not return error", test.Description, i), t, FailureHalts, func() {
 				So(err, ShouldBeNil)
 			})
 
@@ -1039,57 +1039,74 @@ baz: plain text
 	err := yaml.Unmarshal([]byte(input), &Wrapper{
 		Value: &node,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+
+	Convey("Unmarshal should not return error", t, FailureHalts, func() {
+		So(err, ShouldBeNil)
+	})
+
 	b, err := yaml.Marshal(&Marshaler{
 		node:       &node,
 		Recipients: recipients,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+
+	Convey("Marshal should not return error", t, FailureHalts, func() {
+		So(err, ShouldBeNil)
+	})
+
 	decoded := string(b)
 	input = fmt.Sprintf("%s\nqux: !crypto/age quux", b)
 	node = yaml.Node{}
+
 	err = yaml.NewDecoder(strings.NewReader(input)).Decode(&Wrapper{
 		Value:     &node,
 		NoDecrypt: true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+
+	Convey("NewDecoder should not return error", t, FailureHalts, func() {
+		So(err, ShouldBeNil)
+	})
+
 	b, err = yaml.Marshal(&Marshaler{
 		node:       &node,
 		Recipients: recipients,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.HasPrefix(string(b), decoded) {
-		t.Fatalf("expected %s to start with %s", string(b), decoded)
-	}
+
+	Convey("Marshal should not return error", t, FailureHalts, func() {
+		So(err, ShouldBeNil)
+	})
+
+	Convey("Marshaled data look the same as original", t, FailureHalts, func() {
+		So(string(b), ShouldStartWith, decoded)
+	})
+
 	wantPrefix := "qux: !crypto/age |-\n    -----BEGIN AGE ENCRYPTED FILE-----"
-	if !strings.HasPrefix(strings.TrimPrefix(string(b), decoded), wantPrefix) {
-		t.Fatalf("expected %s to start with %s", strings.TrimPrefix(string(b), decoded), wantPrefix)
-	}
+
+	Convey("Marshaled data should be encrypted", t, FailureHalts, func() {
+		So(strings.TrimPrefix(string(b), decoded), ShouldStartWith, wantPrefix)
+	})
+
 	node = yaml.Node{}
 	err = yaml.Unmarshal(b, &Wrapper{
 		Value:      &node,
 		Identities: identities,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+
+	Convey("Unmarshal should not return error", t, FailureHalts, func() {
+		So(err, ShouldBeNil)
+	})
+
 	b, err = yaml.Marshal(&node)
-	if err != nil {
-		t.Fatal(err)
-	}
+
+	Convey("Marshal should not return error", t, FailureHalts, func() {
+		So(err, ShouldBeNil)
+	})
+
 	want := `foo: !crypto/age bar
 baz: plain text
 qux: !crypto/age quux
 `
-	if string(b) != want {
-		t.Fatalf("expected %s to equal %s", string(b), want)
-	}
+
+	Convey("Marshaled data not as expected", t, FailureHalts, func() {
+		So(string(b), ShouldEqual, want)
+	})
 }
