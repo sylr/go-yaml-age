@@ -106,7 +106,7 @@ func TestAnonymousStruct(t *testing.T) {
 	}
 
 	// "anonymous" struct
-	d1 := make(map[interface{}]interface{})
+	d1 := make(map[any]any)
 
 	// Decode
 	w := Wrapper{Value: &d1, Identities: ids}
@@ -269,7 +269,7 @@ func TestComplexData(t *testing.T) {
 func TestUnlmarshallingInputDocument(t *testing.T) {
 	tests := []struct {
 		Description string
-		Assertion   func(interface{}, ...interface{}) string
+		Assertion   func(any, ...any) string
 		Input       string
 		Expected    string
 	}{
@@ -344,7 +344,7 @@ password: !crypto/age ThisIsMyReallyEncryptedPassword
 func TestUnlmarshallingBogusEncryptedData(t *testing.T) {
 	tests := []struct {
 		Description string
-		Assertion   func(interface{}, ...interface{}) string
+		Assertion   func(any, ...any) string
 		Input       string
 	}{
 		{
@@ -459,7 +459,7 @@ func TestNoRecipientMarshal(t *testing.T) {
 func TestDecodeEncodeMarshal(t *testing.T) {
 	type testData struct {
 		Description  string
-		Assertion    func(interface{}, ...interface{}) string
+		Assertion    func(any, ...any) string
 		Input        string
 		Expected     string
 		DiscardNoTag bool

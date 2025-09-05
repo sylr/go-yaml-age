@@ -28,7 +28,6 @@ func ExampleWrapper() {
 	}{}
 
 	id, err := age.NewScryptIdentity("point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue")
-
 	if err != nil {
 		panic(err)
 	}
@@ -41,16 +40,13 @@ func ExampleWrapper() {
 	decoder := yaml.NewDecoder(rbuf)
 	encoder := yaml.NewEncoder(wbuf)
 	encoder.SetIndent(2)
+	encoder.CompactSeqIndent()
 
-	err = decoder.Decode(&w)
-
-	if err != nil {
+	if err = decoder.Decode(&w); err != nil {
 		panic(err)
 	}
 
-	err = encoder.Encode(&node)
-
-	if err != nil {
+	if err = encoder.Encode(&node); err != nil {
 		panic(err)
 	}
 
@@ -92,7 +88,6 @@ password: !crypto/age:DoubleQuoted,NoTag |
 	wbuf := bytes.NewBuffer(nil)
 
 	id, err := age.NewScryptIdentity("point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue")
-
 	if err != nil {
 		panic(err)
 	}
@@ -107,19 +102,16 @@ password: !crypto/age:DoubleQuoted,NoTag |
 	decoder := yaml.NewDecoder(rbuf)
 	encoder := yaml.NewEncoder(wbuf)
 	encoder.SetIndent(2)
+	encoder.CompactSeqIndent()
 
 	for {
-		err = decoder.Decode(&w)
-
-		if err == io.EOF {
+		if err := decoder.Decode(&w); err == io.EOF {
 			break
 		} else if err != nil {
 			panic(err)
 		}
 
-		err = encoder.Encode(&node)
-
-		if err != nil {
+		if err := encoder.Encode(&node); err != nil {
 			panic(err)
 		}
 	}
@@ -135,7 +127,6 @@ password: !crypto/age:DoubleQuoted,NoTag |
 
 func ExampleString_encode() {
 	rec, err := age.NewScryptRecipient("point-adjust-member-tip-tiger-limb-honey-prefer-copy-issue")
-
 	if err != nil {
 		panic(err)
 	}
@@ -149,9 +140,9 @@ func ExampleString_encode() {
 	buf := bytes.NewBuffer(nil)
 	encoder := yaml.NewEncoder(buf)
 	encoder.SetIndent(2)
-	err = encoder.Encode(&node)
+	encoder.CompactSeqIndent()
 
-	if err != nil {
+	if err := encoder.Encode(&node); err != nil {
 		panic(err)
 	}
 

@@ -53,7 +53,7 @@ func (s *String) UnmarshalYAML(value *yaml.Node) error {
 
 // MarshalYAML encrypts the String and marshals it to YAML. If Recipients
 // is empty then the Value is kept unencrypted.
-func (s String) MarshalYAML() (interface{}, error) {
+func (s String) MarshalYAML() (any, error) {
 	node := yaml.Node{
 		Kind:        s.Kind,
 		Style:       s.Style,
@@ -78,18 +78,15 @@ func (s String) MarshalYAML() (interface{}, error) {
 
 	buf := &bytes.Buffer{}
 	armorWriter := armor.NewWriter(buf)
-	encryptWriter, err := age.Encrypt(armorWriter, s.Recipients...)
+	var encryptWriter io.WriteCloser
+	var err error
 
-	if err != nil {
+	if encryptWriter, err = age.Encrypt(armorWriter, s.Recipients...); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrUpstreamAgeError, err)
 	}
-
-	_, err = io.WriteString(encryptWriter, s.Value)
-
-	if err != nil {
-		return nil, err
+	if _, err = io.WriteString(encryptWriter, s.Value); err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrUpstreamAgeError, err)
 	}
-
 	if err := encryptWriter.Close(); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrUpstreamAgeError, err)
 	}

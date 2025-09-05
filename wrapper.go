@@ -166,7 +166,7 @@ func (w Wrapper) decode(node *yaml.Node) (*yaml.Node, error) {
 }
 
 // MarshalYAML recursively encrypts Value.
-func (w Wrapper) MarshalYAML() (interface{}, error) {
+func (w Wrapper) MarshalYAML() (any, error) {
 	switch v := w.Value.(type) {
 	case *yaml.Node:
 		return w.encode(v)
@@ -176,8 +176,8 @@ func (w Wrapper) MarshalYAML() (interface{}, error) {
 }
 
 // marshalYAML is the internal implementation of MarshalYAML. We need the internal
-// implementation to be able to return *yaml.Node instead of interface{} because
-// the global MarshalYAML function needs to return an interface{} to comply with
+// implementation to be able to return *yaml.Node instead of any because
+// the global MarshalYAML function needs to return an any to comply with
 // the yaml.Marshaler interface.
 func (w Wrapper) encode(node *yaml.Node) (*yaml.Node, error) {
 	if node == nil {
