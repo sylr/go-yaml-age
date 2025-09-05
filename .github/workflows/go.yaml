@@ -4,16 +4,19 @@ on: [push, pull_request]
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
     strategy:
       matrix:
-        go: ["1.19"]
+        go: ["1.25"]
     steps:
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
 
     - name: Set up Go ${{ matrix.go }}
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go }}
       id: go
@@ -22,14 +25,14 @@ jobs:
       run: make go-mod-verify
 
     - name: Lint
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v8
 
     - name: Test
       run: make test VERBOSE=1 CODECOV=1
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v5
       with:
-        token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
         files: coverage.txt
-      if: matrix.go == '1.19'
+        use_oidc: true
+      if: matrix.go == '1.25'
