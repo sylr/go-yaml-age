@@ -909,6 +909,7 @@ dup: *passwd`),
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.Description, func(t *testing.T) {
 			t.Parallel()
 			runTest(t, test)
@@ -921,7 +922,7 @@ dup: *passwd`),
 func TestIncorrectBehaviours(t *testing.T) {
 	tests := []struct {
 		Description  string
-		Assertion    func(interface{}, ...interface{}) string
+		Assertion    func(any, ...any) string
 		Input        string
 		Expected     string
 		DiscardNoTag bool

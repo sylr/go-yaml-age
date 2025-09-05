@@ -90,8 +90,12 @@ func (s String) MarshalYAML() (interface{}, error) {
 		return nil, err
 	}
 
-	encryptWriter.Close()
-	armorWriter.Close()
+	if err := encryptWriter.Close(); err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrUpstreamAgeError, err)
+	}
+	if err := armorWriter.Close(); err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrUpstreamAgeError, err)
+	}
 
 	node.Value = strings.TrimSuffix(buf.String(), "\n")
 
