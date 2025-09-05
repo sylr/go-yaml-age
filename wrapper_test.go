@@ -12,7 +12,7 @@ import (
 	"filippo.io/age/armor"
 	. "github.com/smartystreets/goconvey/convey"
 
-	"sylr.dev/yaml/v3"
+	"go.yaml.in/yaml/v3"
 )
 
 const (

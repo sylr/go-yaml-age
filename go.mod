@@ -5,7 +5,7 @@ go 1.19
 require (
 	filippo.io/age v1.0.0
 	github.com/smartystreets/goconvey v1.7.2
-	sylr.dev/yaml/v3 v3.0.0-20220527135632-500fddf2b049
+	go.yaml.in/yaml/v3 v3.0.4
 )
 
 require (
@@ -14,4 +14,5 @@ require (
 	github.com/smartystreets/assertions v1.2.0 // indirect
 	golang.org/x/crypto v0.3.0 // indirect
 	golang.org/x/sys v0.2.0 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )

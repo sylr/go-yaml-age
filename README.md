@@ -4,7 +4,7 @@ go-yaml-age
 [![pkg.go.dev](https://pkg.go.dev/badge/sylr.dev/yaml/age/v3)](https://pkg.go.dev/sylr.dev/yaml/age/v3)
 [![codecov](https://codecov.io/gh/sylr/go-yaml-age/branch/master/graph/badge.svg?token=5WDCMLDFA7)](https://codecov.io/gh/sylr/go-yaml-age)
 
-Wrapper for [`sylr.dev/yaml/v3`](https://pkg.go.dev/sylr.dev/yaml/age/v3) which allows
+Wrapper for [`go.yaml.in/yaml/v3`](https://pkg.go.dev/go.yaml.in/yaml/v3) which allows
 to encrypt/decrypt YAML data in place using the [`AGE`](https://age-encryption.org/v1) encryption tool.
 
 Documentation

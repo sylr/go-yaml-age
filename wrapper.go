@@ -7,7 +7,7 @@ import (
 
 	"filippo.io/age"
 	"filippo.io/age/armor"
-	"sylr.dev/yaml/v3"
+	"go.yaml.in/yaml/v3"
 )
 
 const (
@@ -23,7 +23,7 @@ var _ yaml.Marshaler = (*Wrapper)(nil)
 type Wrapper struct {
 	// Value holds the struct that will either be decrypted with the given
 	// Identities or encrypted with the given Recipients.
-	Value interface{}
+	Value any
 
 	// Identities that will be used to try decrypting encrypted Value.
 	Identities []age.Identity

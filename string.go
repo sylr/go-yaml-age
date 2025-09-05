@@ -8,7 +8,7 @@ import (
 
 	"filippo.io/age"
 	"filippo.io/age/armor"
-	"sylr.dev/yaml/v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // NewString takes a string to encrypt and the targeted recipients then
